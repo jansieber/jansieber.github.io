@@ -1,0 +1,204 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Create random matrix with given jordan normal form structure</title>
+    <script src="https://sagecell.sagemath.org/static/embedded_sagecell.js"></script>
+    <script>$(function () {
+    // Make *any* div with class 'compute' a Sage cell
+      sagecell.makeSagecell({
+      inputLocation: 'div.compute',
+      languages: ["octave"],
+      linked: true,
+      evalButtonText: 'Execute code'});
+    });
+    </script>
+    <style>
+div.c {
+  text-align: center;
+}
+</style>
+  </head>
+  <body>
+    <h2>Generate a matrix that has a given Jordan Normal Form structure but looks random with integer entries </h2>
+    <h3>(University of Exeter, Jan Sieber)
+    </h3>
+    The part below uses the mathematical programming environment sage
+    (<a href="http://www.sagemath.org/">www.sagemath.org/</a>). The
+    cells with the numbered lines are programming code, which will be
+    executed on the free cloud
+    service <a href="https://sagecell.sagemath.org/">sagecell.sagemath.org/</a>
+    <br/>
+    Click 'Execute code' to load this function. Look at defaults to see optional inputs.
+<a name="randJordan"></a>
+<div class="compute"><script type="text/x-sage">
+function A=rand_jordan(varargin)
+default={'eigenvalues',{{1,[3,1]},{0,1}},'trafobound',[0,1],...
+    'seed',0,'permute',true,'trafo','lu'};
+options=loc_set_options(default,varargin,'pass_on');
+init_rnd(options.seed);
+n=sum(cellfun(@(x)sum(x{2}),options.eigenvalues));
+evs=cellfun(@(x)x{1},options.eigenvalues);
+blksize=cellfun(@(x)x{2},options.eigenvalues,'uniformoutput',false);
+blkmat=cell(1,length([blksize{:}]));
+iblk=0;
+for i=1:length(blksize)
+    for k=1:length(blksize{i})
+        iblk=iblk+1;
+        blkmat{iblk}=diag(evs(i)*ones(blksize{i}(k),1));
+        len=size(blkmat{iblk},1);
+        if len>1
+            blkmat{iblk}=blkmat{iblk}+diag(ones(len-1,1),1);
+        end
+    end
+end
+blkmat=blkmat(randperm(length(blkmat)));
+J=blkdiag(blkmat{:});
+A=J;
+for i=1:length(options.trafo)
+    fcn=['tri',options.trafo(i)];
+    rmat=randi(options.trafobound,n,n);
+    shift=(options.trafo(i)=='u')*2-1;
+    trafo=feval(fcn,rmat,shift)+eye(n);
+    A=trafo\(A*trafo);
+end
+if options.permute
+    perm=perm_matrix(randperm(n));
+    A=perm'*A*perm;
+end
+end
+%%
+function prm=perm_matrix(perm)
+n=length(perm);
+prm=sparse((1:n)',perm',ones(n,1),n,n);
+end
+function [options,passed_on,userdefined]=loc_set_options(defaults,userargs,pass_on,extra_optname,extra_as_defined)
+%% parses varargin and assigns fields of structure options
+% arguments not present in defaults are passed on into cell array passed_on
+% if pass_on is present and (non-empty or false), otherwise an error
+% message is generated; userdefined returns a structure indicating which
+% options have been set by userargs. If extra_optname is present, an additional
+% check is performed: if one of the names in userargs is extra_optname and its
+% value is a struct, use the fields of this struct to replace those options
+% that have not been set by userargs. Fields in extra_optname that do not show up
+% in defaults are passed on into passed_on. This permits overwriting
+% defaults from the level above.
+%
+% Userargs can also be a struct. In this case, fields showing up in
+% defaults are put into options.
+%
+% $Id: dde_set_options.m 315 2019-01-29 19:42:21Z jansieber $
+%
+passed_on={};
+%% prepopulate options with defaults
+% wrap cell arguments to avoid generating multiple structs
+if isstruct(defaults)
+    options=defaults;
+elseif iscell(defaults)
+    for i=1:length(defaults)
+        if iscell(defaults{i})
+            defaults{i}=defaults(i);
+        end
+    end
+    options=struct(defaults{:});
+else
+    error('defaults not recognized\n');
+end
+%% Initialize fields in userdefined as false
+userdefined=[fieldnames(options),num2cell(false(length(fieldnames(options)),1))]';
+userdefined=struct(userdefined{:});
+%% check if unknown arguments should throw error
+if nargin<3 || isempty(pass_on)
+    pass_on=false;
+end
+if nargin<4
+    extra_optname='';
+end
+if nargin<5
+    extra_as_defined=false;
+end
+extra_optvalue=struct();
+if length(userargs)~=1
+    %% userargs input is cell
+    for i=1:2:length(userargs)
+        if isfield(options,userargs{i})
+            options.(userargs{i})=userargs{i+1};
+            userdefined.(userargs{i})=true;
+        elseif strcmp(userargs{i},extra_optname)
+            extra_optvalue=userargs{i+1};
+        else
+            if ~pass_on
+                error('option ''%s'' not recognized\n',userargs{i});
+            else
+                passed_on={passed_on{:},userargs{i},userargs{i+1}}; %#ok<CCAT>
+            end
+        end
+    end
+else
+    %% userargs input is struct
+    userargs=userargs{1};
+    if ~isstruct(userargs)
+        error('option ''%s'' not recognized\n',userargs{i});
+    end
+    passed_on={};
+    usernames=fieldnames(userargs);
+    for i=1:length(usernames)
+        if isfield(options,usernames{i})
+            options.(usernames{i})=userargs.(usernames{i});
+            if extra_as_defined
+                userdefined.(usernames{i})=true;
+            end
+        elseif strcmp(usernames{i},extra_optname)
+            extra_optvalue=userargs.(usernames{i});
+        else
+            passed_on={passed_on{:},usernames{i},userargs.(usernames{i})}; %#ok<CCAT>
+        end
+    end
+end
+%% check if argument optname is present
+% if yes and one of the userargs names was optname
+if ~isempty(fieldnames(extra_optvalue))
+    check=setdiff(intersect(fieldnames(extra_optvalue),fieldnames(options)),{extra_optname});
+    for i=1:length(check)
+        if ~userdefined.(check{i})
+            options.(check{i})=extra_optvalue.(check{i});
+            if extra_as_defined
+                userdefined.(check{i})=true;
+            end
+        end
+    end
+    check=setdiff(fieldnames(extra_optvalue),fieldnames(options));
+    add_pass=cell(1,2*length(check));
+    for i=1:length(check)
+        add_pass(2*i+(-1:0))={check{i},extra_optvalue.(check{i})};
+    end
+    passed_on=[passed_on,add_pass];  
+end
+end
+function init_rnd(seed)
+if ~isoctave()
+    rng(seed);
+else
+    rand('state',seed);
+end
+end
+function isoct=isoctave()
+%% check if octave is running instead of Matlab
+%
+%
+if exist('OCTAVE_VERSION','builtin')
+    isoct=true;
+else
+    isoct=false;
+end
+end
+fprintf('loaded function rand_jordan\n')
+</script></div>
+In the box below you can modify the call to the function. The example below creates a matrix with eigenvalues 2 and 1. Eigenvalue 2 has Jordan blocks of length 3 and 1, and eigenvalue 1 has a single Jordan block of length 1 (so is simple). Change the number after 'seed' to get a different random example.
+<div class="compute"><script type="text/x-sage">
+A=rand_jordan('eigenvalues',{{2,[3,1]},{1,1}},'seed',0);
+disp(num2str(A));
+</script></div>
+  </body>
+</html>

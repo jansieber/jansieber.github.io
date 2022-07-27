@@ -1,0 +1,140 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Coloring maps/networks and solving sudokus Part I</title>
+    <script src="https://sagecell.sagemath.org/static/embedded_sagecell.js"></script>
+    <script>$(function () {
+    // Make *any* div with class 'compute' a Sage cell
+      sagecell.makeSagecell({
+      inputLocation: 'div.compute',
+      languages: ["python"],
+      linked: true,
+      evalButtonText: 'Execute code'});
+    });
+    </script>
+    <style>
+div.c {
+  text-align: center;
+}
+</style>
+  </head>
+  <body>
+    <h2>Computer program for coloring networks with a given number of colors </h2>
+    <h3>(University of Exeter, Jan Sieber)
+    </h3>
+    The part below uses the mathematical programming environment sage
+    (<a href="http://www.sagemath.org/">www.sagemath.org/</a>). The
+    cells with the numbered lines are programming code, which will be
+    executed on the free cloud
+    service <a href="https://sagecell.sagemath.org/">sagecell.sagemath.org/</a>
+<ul>
+  <li>
+Below is a piece of computer program that performs automatically what
+a human would do manually when coloring a network.<br> Suppose we have
+colored nodes up to number n-1, so we are trying to find a color for
+node number n. We check, which colors the neighbors have, choose
+the next available color for node n, and move on to node n+1. If no
+color is available, we move back to node n-1 and see if we had another
+color choice there.
+Click 'Execute code' to load this function.
+<a name="colorRemaining"></a>
+<div class="compute"><script type="text/x-sage">
+def colorRemaining(nodes, network, allowedColors, number, coloring):
+    if number == len(nodes):        # whole network colored
+        return 1                    # return=finished
+    neighborColors ={coloring[i] for i in network[nodes[number]]}
+    for c in list(allowedColors - neighborColors): # try all unused colors
+        coloring[nodes[number]] = c
+        ret=colorRemaining(nodes,network,allowedColors,number+1,coloring)
+        if ret==1:                  # subnetwork successfully colored, return
+            return 1
+        coloring[nodes[number]] = 0 # not successful, try next color
+    return -1                       # no color found, backtrack to previous node
+print("loading of routine colorRemaining completed")		    
+</script></div>
+Some other functions that are useful and needed are loaded below (feel free to ignore or explore).
+Click 'Execute code' to load these extra functions.
+<div class="compute"><script type="text/x-sage">
+import re
+def checkSolution(network, coloring,initialColoring):
+    validColoring=True
+    for node in network:
+        for neighbour in network[node]:
+            if coloring[node] == coloring[neighbour]:
+                print("wrong coloring found "+ str(node) + " and " + str(neighbour) + " have the same color")
+                validColoring = False
+    for i in coloring.keys():
+        if initialColoring[i] and not initialColoring[i]==coloring[i]:
+                print("coloring at {0} changed from {1} to {2}".format(i,initialColoring[i],coloring[i]))
+                validColoring=False
+    if validColoring:
+        print("coloring is valid")
+    return validColoring
+print("loading of routine checkSolution completed")		    
+def computeColoring(network,numColors):
+    allowedColors=set(range(1,numColors+1))
+    coloring={i:0 for i in network.keys()}
+    initialColoring={i:coloring[i] for i in coloring.keys()}
+    nodes=list(network)
+    ret=colorRemaining(nodes,network,allowedColors, 0, coloring)
+    if ret>0:
+        print("coloring successful")
+        checkSolution(network,coloring,initialColoring)
+        return coloring
+    else:
+        print("coloring unsuccessful")
+        return initialColoring
+print("loading of routine computeColoring (which calls colorRemaining) completed")
+
+def networkFromLinks(str):
+    pairs=[[int(y) for y in x.split('-')] for x in re.split("[\\n ]",str) if x]
+    network={}
+    for k in pairs:
+        if network.get(k[0]):
+            network[k[0]].append(k[1])
+        else:
+            network[k[0]]=[k[1]]
+        if network.get(k[1]):
+            network[k[1]].append(k[0])
+        else:
+            network[k[1]]=[k[0]]
+    for k in network:
+        network[k]=list(set(network[k]))
+    return network
+print("loading of routine networkFromLinks completed")
+</script></div>
+  </li>
+  <li> I have prepared two ways to type in how the network looks. The
+  first way is as a sequence of number node number pairs connected
+  with a hyphen (or minus). This sequence needs to be enclosed by
+  three doublequote marks as the text after links= below.
+    
+    Click 'Execute code' to run the code.
+<div class="compute"><script type="text/x-sage">
+links="""
+    1-2 1-3 1-4 1-5 1-6 2-3 3-4 4-5 5-6 6-2 2-7 2-8 3-8 3-9 4-9 4-10 5-10 5-11
+    6-11 6-7 7-8 8-9 9-10 10-11 11-7 7-12 8-12 9-12 10-12 11-12
+    """
+network1=networkFromLinks(links)    # convert list of links to network
+numberOfColors=4
+coloring1=computeColoring(network1,numberOfColors) # initialize, run and check colorRemaining
+print(coloring1)                                   # print result
+</script></div>
+  </li>
+  <li>An alternative way is to input the network directly. Be aware
+  that this requires curly braces, colons, square brackets and commas
+  in the right places. For example, if node 1 is linked to nodes 2, 3
+  and 4, one has to write 1:[2,3,4].
+<div class="compute"><script type="text/x-sage">
+network2={1:[2,3,4],2:[1,3,4],3:[1,2,4],4:[1,2,3]}
+numberOfColors=4    
+coloring2=computeColoring(network2,numberOfColors)
+print(coloring2)
+</script></div>
+  </li>
+</ul>
+Move on to <a href="sudoku.html">sudoku solving</a>.
+  </body>
+</html>

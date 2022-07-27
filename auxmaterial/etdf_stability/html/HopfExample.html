@@ -1,0 +1,308 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Demonstration of extended time-delayed feedback control on Hopf normal form</title><meta name="generator" content="MATLAB 8.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-03-14"><meta name="DC.source" content="HopfExample.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Demonstration of extended time-delayed feedback control on Hopf normal form</h1><!--introduction--><p>Author: Jan Sieber</p><p>Consider the Hopf normal form with single control input</p><p><img src="HopfExample_eq00527036933522819309.png" alt="$$ x_1'=p x_1-x_2+x_1(x_1^2+x_2^2)+u$$"></p><p><img src="HopfExample_eq07334531520203894435.png" alt="$$ x_2'= x_1+p x_2+x_2(x_1^2+x_2^2)+u$$"></p><p>(thus, <img src="HopfExample_eq14010628513759378264.png" alt="$\partial_2f(x,0)=b=[1,1]^T$">.) We construct time-delayed feedback control of the form</p><p><img src="HopfExample_eq14060456685127297670.png" alt="$$ u(t)=K(x(t))[\tilde x(t)-x(t)] $$"></p><p>where (both, <img src="HopfExample_eq14833433867325483769.png" alt="$x(t)$"> and <img src="HopfExample_eq13421649829266264942.png" alt="$\tilde x(t)$"> have two components)</p><p><img src="HopfExample_eq10532854903533175006.png" alt="$$ \tilde x(t)=(1-\varepsilon) \tilde x(t-T) + \varepsilon x(t-T) $$"></p><p>The bifurcation diagram and the stability of the system with delay are computed using DDE-Biftool version 3.1, available from</p><p><a href="https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download">https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download</a></p><p>This demo is used as an illustrative example in</p><p>Sieber: Generic stabilisability for time-delayed feedback control, Preprint download at <a href="http://arxiv.org/abs/1508.05671">http://arxiv.org/abs/1508.05671</a></p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Code</a></li><li><a href="#2">Preparation: add path and define right-hand side</a></li><li><a href="#3">Contruct bifurcation diagram</a></li><li><a href="#5">Plot bifurcation diagram</a></li><li><a href="#6">Construct gains for control and compute stability for controlled periodic orbit</a></li><li><a href="#7">Plot of gains K as constructed</a></li><li><a href="#8">Illustration of spectrum for controlled system</a></li><li><a href="#10">Zoom in</a></li><li><a href="#11">How does the true x-dependent gain look like?</a></li></ul></div><h2>Code<a name="1"></a></h2><h2>Preparation: add path and define right-hand side<a name="2"></a></h2><p>Modify the path below to lead to the local <tt>ddebiftool</tt> folders.</p><pre class="codeinput">clear
+close <span class="string">all</span>
+addpath(<span class="string">'../dde_biftool/ddebiftool'</span>);
+addpath(<span class="string">'../dde_biftool/ddebiftool_utilities'</span>);
+hopf=@(x,p,u)[<span class="keyword">...</span>
+    p*x(1,:)-x(2,:)+x(1,:).*(x(1,:).^2+x(2,:).^2)+u;<span class="keyword">...</span>
+    p*x(2,:)+x(1,:)+x(2,:).*(x(1,:).^2+x(2,:).^2)+u];
+funcs=set_funcs(<span class="keyword">...</span>
+    <span class="string">'sys_rhs'</span>,@(xx,p)etdf_controlled_rhs(xx,p,hopf),<span class="keyword">...</span>
+    <span class="string">'sys_tau'</span>,@()[],<span class="keyword">...</span>
+    <span class="string">'x_vectorized'</span>,true);
+</pre><h2>Contruct bifurcation diagram<a name="3"></a></h2><p>Continue equilibria <img src="HopfExample_eq03080279601890412474.png" alt="$x=(0,0)^T$"> initially in <img src="HopfExample_eq09941021013676836398.png" alt="$p$"> and branch off at Hopf bifurcation at <img src="HopfExample_eq00612862738434699171.png" alt="$p=0$">. Then continue family of periodic orbits, and check its stability (it is unstable).</p><pre class="codeinput">[stbr,suc]=SetupStst(funcs,<span class="string">'x'</span>,[0;0],<span class="string">'parameter'</span>,-0.2,<span class="string">'contpar'</span>,1,<span class="string">'dir'</span>,1,<span class="string">'step'</span>,1e-1);
+display(suc)
+stbr.method.continuation.plot=0;
+stbr=br_contn(funcs,stbr,4);
+[nunst_stst,~,~,stbr.point]=GetStability(stbr,<span class="string">'funcs'</span>,funcs);
+</pre><pre class="codeoutput">suc =
+     1
+</pre><pre class="codeinput">[pbr,suc]=SetupPsol(funcs,stbr,find(nunst_stst==2,1,<span class="string">'first'</span>),<span class="string">'radius'</span>,0.05,<span class="string">'min_bound'</span>,[1,-0.5]);
+pbr.method.continuation.plot=0;
+pbr=br_contn(funcs,pbr,20);
+[nunst_per,~,~,pbr.point]=GetStability(pbr,<span class="string">'funcs'</span>,funcs,<span class="string">'exclude_trivial'</span>,true);
+</pre><pre class="codeoutput">BR_CONTN warning: boundary hit.
+</pre><h2>Plot bifurcation diagram<a name="5"></a></h2><pre class="codeinput">x_eq=arrayfun(@(p)p.x(1),stbr.point);
+p_eq=[stbr.point.parameter];
+x_per=arrayfun(@(p)max(p.profile(1,:)),pbr.point);
+p_per=[pbr.point.parameter];
+floq_per=arrayfun(@(p)max(abs(p.stability.mu)),pbr.point);
+T_per=[pbr.point.period];
+figure(1);clf
+subplot(1,2,1);
+plot(p_eq,x_eq,<span class="string">'.-'</span>,p_per,x_per,<span class="string">'o-'</span>);
+xlabel(<span class="string">'p'</span>);ylabel(<span class="string">'amplitude x_1'</span>);
+legend(<span class="string">'eqilibrium'</span>,<span class="string">'periodic orbits'</span>);
+title(<span class="string">'Bifurcation diagram'</span>)
+subplot(1,2,2);
+plot(p_per,log(floq_per)./T_per,<span class="string">'.-'</span>);
+xlabel(<span class="string">'p'</span>);ylabel(<span class="string">'Floquet exponent (log(Multiplier)/period'</span>);
+title(<span class="string">'Stability'</span>)
+</pre><img vspace="5" hspace="5" src="HopfExample_01.png" alt=""> <h2>Construct gains for control and compute stability for controlled periodic orbit<a name="6"></a></h2><p>The function <tt>etdf_control</tt> remeshes the time point mesh along the orbit (to discretize the short large near-impulse of feedback control Then it recomputes the orbit using the new mesh (with <tt>p_correc</tt>), computes the gains using the asymptotic formula by Brunovsky'69. The gains <img src="HopfExample_eq06643176732083333865.png" alt="$K_0$"> are chosen such that the eigenvalues of <img src="HopfExample_eq14466004094373733071.png" alt="$P_0\exp(bK_0^T)$"> are placed on a circle of radious <img src="HopfExample_eq07812074223268534135.png" alt="$(1-\varepsilon)/2$">.</p><p>Time of control input is interval <img src="HopfExample_eq16457202413066742610.png" alt="$[0,\delta]$"> (controlled by optional parameter <tt>'t'</tt>).</p><pre class="codeinput">clear <span class="string">pcorrected</span> <span class="string">spec</span> <span class="string">gain</span>
+epsilon=0.005;
+<span class="keyword">for</span> i=length(pbr.point)-1:-1:1
+    [pcorrected(i),spec(:,i),gain(:,i)]=etdf_control(hopf,pbr,<span class="string">'point'</span>,i+1,<span class="keyword">...</span>
+    <span class="string">'t'</span>,0,<span class="string">'delta'</span>,1e-4,<span class="string">'epsilon'</span>,epsilon,<span class="string">'rho'</span>,0.1);
+<span class="keyword">end</span>
+display(spec(1:3,:),<span class="string">'dominant eigenvalues of controlled system'</span>)
+</pre><pre class="codeoutput">dominant eigenvalues of controlled system =
+  Columns 1 through 2
+       1.0001 +          0i            1 +          0i
+      0.99526 +  0.0011534i      0.99531 +  0.0012293i
+      0.99526 -  0.0011534i      0.99531 -  0.0012293i
+  Columns 3 through 4
+            1 +          0i            1 +          0i
+      0.99536 +  0.0013055i      0.99547 +  0.0014587i
+      0.99536 -  0.0013055i      0.99547 -  0.0014587i
+  Columns 5 through 6
+            1 +          0i            1 +          0i
+      0.99565 +  0.0016865i      0.99596 +  0.0019707i
+      0.99565 -  0.0016865i      0.99596 -  0.0019707i
+  Columns 7 through 8
+            1 +          0i            1 +          0i
+      0.99643 +  0.0022525i      0.99702 +  0.0024355i
+      0.99643 -  0.0022525i      0.99702 -  0.0024355i
+  Columns 9 through 10
+            1 +          0i            1 +          0i
+       0.9976 +  0.0024396i      0.99778 +          0i
+       0.9976 -  0.0024396i      0.99767 +   0.002641i
+</pre><h2>Plot of gains K as constructed<a name="7"></a></h2><pre class="codeinput">figure(3);clf
+plot(p_per(2:end),gain,<span class="string">'.-'</span>);
+set(gca,<span class="string">'ylim'</span>,max(abs(gain(:,end)))*[-1,1],<span class="string">'xlim'</span>,[min(p_per),0]);
+legend(<span class="string">'gain K_1'</span>,<span class="string">'gain K_2'</span>);
+xlabel(<span class="string">'p'</span>);
+grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="HopfExample_02.png" alt=""> <h2>Illustration of spectrum for controlled system<a name="8"></a></h2><p>for periodic orbit near <tt>p=-0.2</tt></p><pre class="codeinput">[~,ind]=min(abs(p_per+0.2));
+epsilon=0.05;
+[pt0,spec0,gain0,Ksmooth]=etdf_control(hopf,pbr,<span class="string">'point'</span>,ind,<span class="keyword">...</span>
+    <span class="string">'t'</span>,0,<span class="string">'delta'</span>,5e-3,<span class="string">'epsilon'</span>,epsilon,<span class="string">'rho'</span>,0.1);
+</pre><pre class="codeinput">figure(4);clf
+deco={<span class="string">'markersize'</span>,10};
+plot(cosd(0:360),sind(0:360),real(spec0),imag(spec0),<span class="string">'.'</span>,deco{:});
+grid <span class="string">on</span>
+xlabel(<span class="string">'Re \lambda'</span>);
+ylabel(<span class="string">'Im \lambda'</span>);
+title(sprintf(<span class="string">'Spectrum of controlled system for p=%g'</span>,pt0.parameter));
+drawnow
+</pre><img vspace="5" hspace="5" src="HopfExample_03.png" alt=""> <h2>Zoom in<a name="10"></a></h2><pre class="codeinput">hold <span class="string">on</span>
+plot(1-epsilon/2+epsilon/2*cosd(0:360),epsilon/2*sind(0:360));
+set(gca,<span class="string">'xlim'</span>,[1-epsilon*1.1,1+epsilon/2],<span class="string">'ylim'</span>,epsilon*0.6*[-1,1]);
+</pre><img vspace="5" hspace="5" src="HopfExample_04.png" alt=""> <h2>How does the true x-dependent gain look like?<a name="11"></a></h2><p>The control is only applied in a small area of size <tt>delta</tt> and scaled by <tt>1/delta</tt>.</p><pre class="codeinput">figure(5);clf
+K=Ksmooth(pt0.profile);
+ind=find(all(abs(K)&lt;1e-4),1,<span class="string">'first'</span>)+2;
+plot(pt0.mesh(1:ind)*pt0.period,K(:,1:ind),<span class="string">'.-'</span>);
+grid <span class="string">on</span>;
+xlabel(<span class="string">'time'</span>);
+ylabel(<span class="string">'\Delta_\delta(x(t)) K(x(t))'</span>);
+figure(6);clf
+ind=find(all(abs(K)&lt;1e-4),1,<span class="string">'last'</span>)-2;
+plot(pt0.mesh(ind:end)*pt0.period,K(:,ind:end),<span class="string">'.-'</span>);
+grid <span class="string">on</span>;
+xlabel(<span class="string">'time'</span>);
+ylabel(<span class="string">'\Delta_\delta(x(t)) K(x(t))'</span>);
+</pre><img vspace="5" hspace="5" src="HopfExample_05.png" alt=""> <img vspace="5" hspace="5" src="HopfExample_06.png" alt=""> <p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Demonstration of extended time-delayed feedback control on Hopf normal form
+%
+% Author: Jan Sieber
+% 
+% Consider the Hopf normal form with single control input
+%
+% $$ x_1'=p x_1-x_2+x_1(x_1^2+x_2^2)+u$$
+%
+% $$ x_2'= x_1+p x_2+x_2(x_1^2+x_2^2)+u$$
+%
+% (thus, $\partial_2f(x,0)=b=[1,1]^T$.) We construct time-delayed feedback
+% control of the form
+%
+% $$ u(t)=K(x(t))[\tilde x(t)-x(t)] $$
+%
+% where (both, $x(t)$ and $\tilde x(t)$ have two components)
+%
+% $$ \tilde x(t)=(1-\varepsilon) \tilde x(t-T) + \varepsilon x(t-T) $$
+%
+% The bifurcation diagram and the stability of the system with delay are
+% computed using DDE-Biftool version 3.1, available from
+%
+% <https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download>
+%
+% This demo is used as an illustrative example in
+%
+% Sieber: Generic stabilisability for time-delayed feedback control,
+% Preprint download at <http://arxiv.org/abs/1508.05671>
+%
+%% Code
+%% Preparation: add path and define right-hand side
+% Modify the path below to lead to the local |ddebiftool| folders.
+clear
+close all
+addpath('../dde_biftool/ddebiftool');
+addpath('../dde_biftool/ddebiftool_utilities');
+hopf=@(x,p,u)[...
+    p*x(1,:)-x(2,:)+x(1,:).*(x(1,:).^2+x(2,:).^2)+u;...
+    p*x(2,:)+x(1,:)+x(2,:).*(x(1,:).^2+x(2,:).^2)+u];
+funcs=set_funcs(...
+    'sys_rhs',@(xx,p)etdf_controlled_rhs(xx,p,hopf),...
+    'sys_tau',@()[],...
+    'x_vectorized',true);
+%% Contruct bifurcation diagram
+% Continue equilibria $x=(0,0)^T$ initially in $p$ and branch off at Hopf
+% bifurcation at $p=0$. Then continue family of periodic orbits, and check its
+% stability (it is unstable).
+[stbr,suc]=SetupStst(funcs,'x',[0;0],'parameter',-0.2,'contpar',1,'dir',1,'step',1e-1);
+display(suc)
+stbr.method.continuation.plot=0;
+stbr=br_contn(funcs,stbr,4);
+[nunst_stst,~,~,stbr.point]=GetStability(stbr,'funcs',funcs);
+%%
+[pbr,suc]=SetupPsol(funcs,stbr,find(nunst_stst==2,1,'first'),'radius',0.05,'min_bound',[1,-0.5]);
+pbr.method.continuation.plot=0;
+pbr=br_contn(funcs,pbr,20);
+[nunst_per,~,~,pbr.point]=GetStability(pbr,'funcs',funcs,'exclude_trivial',true);
+%% Plot bifurcation diagram
+x_eq=arrayfun(@(p)p.x(1),stbr.point);
+p_eq=[stbr.point.parameter];
+x_per=arrayfun(@(p)max(p.profile(1,:)),pbr.point);
+p_per=[pbr.point.parameter];
+floq_per=arrayfun(@(p)max(abs(p.stability.mu)),pbr.point);
+T_per=[pbr.point.period];
+figure(1);clf
+subplot(1,2,1);
+plot(p_eq,x_eq,'.-',p_per,x_per,'o-');
+xlabel('p');ylabel('amplitude x_1');
+legend('eqilibrium','periodic orbits');
+title('Bifurcation diagram')
+subplot(1,2,2);
+plot(p_per,log(floq_per)./T_per,'.-');
+xlabel('p');ylabel('Floquet exponent (log(Multiplier)/period');
+title('Stability')
+%% Construct gains for control and compute stability for controlled periodic orbit
+% The function |etdf_control| remeshes the time point mesh along the orbit
+% (to discretize the short large near-impulse of feedback control
+% Then it recomputes the orbit using the new mesh (with |p_correc|),
+% computes the gains using the asymptotic formula by Brunovsky'69. The
+% gains $K_0$ are chosen such that the eigenvalues of $P_0\exp(bK_0^T)$ are
+% placed on a circle of radious $(1-\varepsilon)/2$.
+%
+% Time of control input is interval $[0,\delta]$ (controlled by optional
+% parameter |'t'|).
+clear pcorrected spec gain
+epsilon=0.005;
+for i=length(pbr.point)-1:-1:1
+    [pcorrected(i),spec(:,i),gain(:,i)]=etdf_control(hopf,pbr,'point',i+1,...
+    't',0,'delta',1e-4,'epsilon',epsilon,'rho',0.1);
+end
+display(spec(1:3,:),'dominant eigenvalues of controlled system')
+
+%% Plot of gains K as constructed
+figure(3);clf
+plot(p_per(2:end),gain,'.-');
+set(gca,'ylim',max(abs(gain(:,end)))*[-1,1],'xlim',[min(p_per),0]);
+legend('gain K_1','gain K_2');
+xlabel('p');
+grid on
+%% Illustration of spectrum for controlled system
+% for periodic orbit near |p=-0.2|
+[~,ind]=min(abs(p_per+0.2));
+epsilon=0.05;
+[pt0,spec0,gain0,Ksmooth]=etdf_control(hopf,pbr,'point',ind,...
+    't',0,'delta',5e-3,'epsilon',epsilon,'rho',0.1);
+%%
+figure(4);clf
+deco={'markersize',10};
+plot(cosd(0:360),sind(0:360),real(spec0),imag(spec0),'.',deco{:});
+grid on
+xlabel('Re \lambda');
+ylabel('Im \lambda');
+title(sprintf('Spectrum of controlled system for p=%g',pt0.parameter));
+drawnow
+%% Zoom in
+hold on
+plot(1-epsilon/2+epsilon/2*cosd(0:360),epsilon/2*sind(0:360));
+set(gca,'xlim',[1-epsilon*1.1,1+epsilon/2],'ylim',epsilon*0.6*[-1,1]);
+%% How does the true x-dependent gain look like?
+% The control is only applied in a small area of size |delta| and scaled by
+% |1/delta|.
+figure(5);clf
+K=Ksmooth(pt0.profile);
+ind=find(all(abs(K)<1e-4),1,'first')+2;
+plot(pt0.mesh(1:ind)*pt0.period,K(:,1:ind),'.-');
+grid on;
+xlabel('time');
+ylabel('\Delta_\delta(x(t)) K(x(t))');
+figure(6);clf
+ind=find(all(abs(K)<1e-4),1,'last')-2;
+plot(pt0.mesh(ind:end)*pt0.period,K(:,ind:end),'.-');
+grid on;
+xlabel('time');
+ylabel('\Delta_\delta(x(t)) K(x(t))');
+
+##### SOURCE END #####
+--></body></html>

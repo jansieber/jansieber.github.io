@@ -1,0 +1,364 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Construct ETDF gains for asymptotic parameters and compute true stability</title><meta name="generator" content="MATLAB 8.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-02-28"><meta name="DC.source" content="etdf_control.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Construct ETDF gains for asymptotic parameters and compute true stability</h1><!--introduction--><p>Calling sequence</p><pre class="language-matlab"><span class="keyword">function</span> [pcor,spec,gains,Ksmooth]=etdf_control(oderhs,branch,<span class="keyword">...</span><span class="comment">)</span>
+</pre><p>The function returns the control gains as constructed by Brunovsky'69 to assign the spectrum of a periodic orbit of a ODE with feedback control. It also returns the the true spectrum and the remeshed point (since the method works only approximately for periodic gain functions, the true spectrum may differ from the assigned spectrum). Details can be found in</p><p>Sieber:  Generic stabilisability for time-delayed feedback control, Preprint download at <a href="http://arxiv.org/abs/1508.05671">http://arxiv.org/abs/1508.05671</a></p><p>The function requires access to standard ddebiftool routines dde_set_options df_deriv p_correc psol_eva psol_jac set_funcs as available from  DDE-Biftool version 3.1:</p><p><a href="https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download">https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download</a></p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Inputs</a></li><li><a href="#2">Outputs:</a></li><li><a href="#3">Optional inputs (name-value pairs)</a></li><li><a href="#6">shift periodic orbit such that control is applied at time 0 and remesh</a></li><li><a href="#7">correct new point pt to periodic solution of discretised problem</a></li><li><a href="#8">compute monodromy matrix P0 and linearized input b0</a></li><li><a href="#9">choose gains to assign spectrum approximately</a></li><li><a href="#10">if lambda is not given, place eigenvalues on a circle</a></li><li><a href="#12">compute true Floquet multipliers for ETDF system</a></li><li><a href="#15">condensate</a></li></ul></div><h2>Inputs<a name="1"></a></h2><div><ul><li><tt>oderhs</tt>: user-defined right-hand side of ODE for controlled system, of the form</li></ul></div><pre class="language-matlab"><span class="keyword">function</span> y=oderhs(x,p,u)
+</pre><p>where <tt>x</tt> and <tt>y</tt> are <tt>n</tt> dimensional, control input <tt>u</tt> is one-dimensional and <tt>p</tt> are additional system parameters. * <tt>branch</tt>: a branch of periodic orbits as computed by DDE-Biftool</p><h2>Outputs:<a name="2"></a></h2><div><ul><li><tt>pcor</tt> (point of kind <tt>'psol'</tt>): remeshed periodic orbit (again corrected with Newton iteration for new mesh)</li><li><tt>spec</tt> ((2 n nint m) x 1 array): eigenvalues of periodic orbit with ETDF</li><li><tt>gains</tt> (n x 1 array): gains constructed as suggested by Brunovsky</li><li><tt>Ksmooth</tt> (function <tt>K=Ksmooth(x)</tt>) function that returns gains along orbit (u(t)=Ksmooth(x(t))[xtilde(t)-x(t)]</li></ul></div><h2>Optional inputs (name-value pairs)<a name="3"></a></h2><div><ul><li><tt>'point'</tt> (default <tt>1</tt>): point number selecting orbit along the branch</li><li><tt>'delta'</tt> (default <tt>1e-2</tt>): approximate length of interval relative to period where feedback control is applied</li><li><tt>'epsilon'</tt> (default <tt>1e-2</tt>): parameter <img src="etdf_control_eq04202927574850129020.png" alt="$\epsilon$"> in the recursion for extended time-delayed feedback</li><li><tt>'t'</tt> (default <tt>0</tt>): time at which control is applied (<tt>x(t)</tt>, approximately until <tt>x(t+delta)</tt>)</li><li><tt>'rho'</tt> (default <tt>0.1</tt>): gain <tt>K(x)</tt> is ensured to be <tt>0</tt> further than <tt>rho</tt> away from <tt>x(t)</tt></li><li><tt>'lambda'</tt> (vector of <tt>n</tt> complex numbers): values to which eigenvalues are assigned by Brunovsky's method (if not given, they are placed on the circle of radius <tt>(1-epsilon)/2</tt>)</li><li><tt>'n0'</tt> (default 30): number of mesh points in <tt>[delta+delta_change,1-delta_change]</tt></li><li><tt>'n1'</tt> (default 30): number of mesh points in <tt>[0,delta]</tt></li><li><tt>'n_change'</tt> (default 10): number of mesh points in <tt>[delta,delta+delta_change]</tt> and <tt>[1-delta_change,1]</tt></li><li><tt>'delta_change'</tt> (default <tt>delta/10</tt>): length of intervals where gains transition from their non-zero value back to zero.</li><li><tt>'x_vectorized'</tt> (default <tt>true</tt>): can <tt>oderhs</tt> called with arrays x of shape (n x nvec) and u of shape (1 x nvec)?</li></ul></div><pre class="codeinput"><span class="keyword">function</span> [pcor,spec,gains,Ksmooth]=etdf_control(oderhs,branch,varargin)
+</pre><pre class="codeinput">default={<span class="string">'point'</span>,1,<span class="string">'delta'</span>,1e-2,<span class="string">'epsilon'</span>,1e-2,<span class="string">'rho'</span>,0.1,<span class="keyword">...</span>
+    <span class="string">'lambda'</span>,[],<span class="string">'n0'</span>,30,<span class="string">'n1'</span>,30,<span class="string">'n_change'</span>,10,<span class="string">'delta_change'</span>,[],<span class="string">'t'</span>,0,<span class="keyword">...</span>
+    <span class="string">'x_vectorized'</span>,true,<span class="string">'hjac'</span>,1e-6};
+options=dde_set_options(default,varargin,<span class="string">'pass_on'</span>);
+<span class="keyword">if</span> isempty(options.delta_change)
+    options.delta_change=options.delta/10;
+<span class="keyword">end</span>
+pt0=branch.point(options.point);
+deg=pt0.degree;
+delta=options.delta;
+dc=options.delta_change;
+t0=options.t;
+</pre><h2>shift periodic orbit such that control is applied at time 0 and remesh<a name="6"></a></h2><p>(mesh is otherwise uniform)</p><pre class="codeinput">mesh1=linspace(t0,t0+delta,options.n1*deg+1);
+mesh_down=linspace(t0+delta,t0+delta+dc,options.n_change*deg+1);
+mesh0=linspace(t0+delta+dc,t0+1-dc,options.n0*deg+1);
+mesh_up=linspace(t0+1-dc,t0+1,options.n_change*deg+1);
+mesh=[mesh1,mesh_down(2:end),mesh0(2:end),mesh_up(2:end)];
+xprof=psol_eva(pt0.profile,pt0.mesh,mesh,pt0.degree);
+pt1=pt0;
+pt1.profile=xprof;
+pt1.mesh=mesh-mesh(1);
+pt1.mesh(end)=1;
+</pre><h2>correct new point pt to periodic solution of discretised problem<a name="7"></a></h2><pre class="codeinput">mth=branch.method.point;
+mth.adapt_mesh_after_correct=0;
+mth.adapt_mesh_before_correct=0;
+funcs=set_funcs(<span class="keyword">...</span>
+    <span class="string">'sys_rhs'</span>,@(xx,p)etdf_controlled_rhs(xx,p,oderhs),<span class="keyword">...</span>
+    <span class="string">'sys_tau'</span>,@()[],<span class="keyword">...</span>
+    <span class="string">'x_vectorized'</span>,options.x_vectorized);
+warning(<span class="string">'off'</span>,<span class="string">'p_correc:nonsquare'</span>);
+[pcor,suc]=p_correc(funcs,pt1,branch.parameter.free,[],mth,0,pt1,0);
+warning(<span class="string">'on'</span>,<span class="string">'p_correc:nonsquare'</span>);
+assert(suc);
+</pre><h2>compute monodromy matrix P0 and linearized input b0<a name="8"></a></h2><pre class="codeinput">J=psol_jac(funcs,[],pcor.period,pcor.profile,pcor.mesh,pcor.degree,<span class="keyword">...</span>
+    pcor.parameter,[],0,<span class="string">'wrapJ'</span>,false);
+[Q,Racc]=condensation(pcor,J);
+P0=Q*Racc;
+b0=df_deriv(struct(<span class="string">'sys_rhs'</span>,@(xx,u)oderhs(xx,pcor.parameter,u)),pcor.profile(:,1),0,<span class="keyword">...</span>
+    [],1,[],options.hjac);
+nx=length(b0);
+</pre><h2>choose gains to assign spectrum approximately<a name="9"></a></h2><pre class="codeinput">lambda=options.lambda;
+<span class="keyword">if</span> isempty(lambda)
+</pre><h2>if lambda is not given, place eigenvalues on a circle<a name="10"></a></h2><pre class="codeinput">    angles=linspace(0,2*pi,nx+1);
+    angles=angles(1:end-1);
+    <span class="keyword">if</span> floor(nx/2)*2==nx
+        angles=angles+angles(2)/2;
+    <span class="keyword">end</span>
+    lambda=(1-options.epsilon)*exp(1i*angles)/2;
+</pre><pre class="codeinput"><span class="keyword">end</span>
+gains=SpecExpAssign(P0,-b0,lambda);
+assert(all(abs(eig(P0*expm(-b0*gains)))&lt;1-options.epsilon));
+</pre><h2>compute true Floquet multipliers for ETDF system<a name="12"></a></h2><pre class="codeinput">pext=pcor;
+T=pext.period;
+pext.parameter(end+1)=T;
+x0=pcor.profile(:,1);
+y0=oderhs(x0,pcor.parameter,0)*T;
+Ksmooth=@(x)gain_of_x(x,gains/T,x0,y0,options.delta,options.delta_change,options.rho);
+pext.profile=[pext.profile;pext.profile];
+etdf_funcs=set_funcs(<span class="keyword">...</span>
+    <span class="string">'sys_rhs'</span>,@(xx,p)etdf_controlled_rhs(xx,p(1:end-1),oderhs,<span class="string">'K'</span>,Ksmooth,<span class="string">'epsilon'</span>,options.epsilon),<span class="keyword">...</span>
+    <span class="string">'sys_tau'</span>,@()length(pext.parameter),<span class="keyword">...</span>
+    <span class="string">'x_vectorized'</span>,options.x_vectorized);
+spec=ext_eig(etdf_funcs,pext,options.epsilon);
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">function</span> [Q,Racc,J]=condensation(point,J)
+</pre><h2>condensate<a name="15"></a></h2><pre class="codeinput">deg=point.degree;
+nint=(length(point.mesh)-1)/deg;
+ndim=size(point.profile,1);
+Q=eye(ndim);
+Racc=eye(ndim);
+<span class="keyword">for</span> k=1:nint
+    ind=(k-1)*ndim*deg;
+    M=J(ind+(1:ndim*deg),ind+(1:ndim*(deg+1)));
+    Minv=M(:,ndim+1:end)\(-M(:,1:ndim));
+    A=Minv(end-ndim+1:end,:);
+    B=A*Q;
+    [Q,R]=qr(B);
+    Racc=R*Racc;
+<span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">function</span> ev=ext_eig(funcs,pt,epsilon)
+[n,nt]=size(pt.profile);
+nx=n/2;
+xrg=1:nx;
+trg=nx+xrg;
+J=psol_jac(funcs,[],<span class="keyword">...</span>
+    pt.period,pt.profile,pt.mesh,pt.degree,pt.parameter,[],false,<span class="keyword">...</span>
+    <span class="string">'wrapJ'</span>,false,<span class="string">'Dtmat'</span>,diag([ones(nx,1);zeros(nx,1)]),<span class="string">'bc'</span>,false);
+Jr=reshape(J,[n,nt-1,n,2*nt-1]);
+Jrxx=Jr(xrg,:,xrg,:);
+Jrxt=Jr(xrg,:,trg,:);
+Jrtx=0*Jr(trg,:,xrg,:);
+Jrtt=0*Jr(trg,:,trg,:);
+<span class="keyword">for</span> i=1:nt-1
+    Jrtt(xrg,i,xrg,i+1)=-(1-epsilon)*eye(nx);
+    Jrtx(xrg,i,xrg,i+1)=-epsilon*eye(nx);
+    Jrtt(xrg,i,xrg,nt+i)=eye(nx);
+<span class="keyword">end</span>
+J2=reshape(cat(1,cat(3,Jrxx,Jrxt),cat(3,Jrtx,Jrtt)),size(J));
+[s1,s2]=size(J2);
+n_ext=s2-s1;
+M0=-J2(:,n_ext+1:end)\J2(:,1:n_ext);
+M=[zeros(n_ext-s1,s1),eye(n_ext-s1);M0];
+ev=eig(M);
+[~,ix]=sort(abs(ev),<span class="string">'descend'</span>);
+ev=ev(ix);
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Construct ETDF gains for asymptotic parameters and compute true stability
+%
+% Calling sequence
+%
+%   function [pcor,spec,gains,Ksmooth]=etdf_control(oderhs,branch,...)
+% 
+% The function returns the control gains as constructed by Brunovsky'69 to
+% assign the spectrum of a periodic orbit of a ODE with feedback control.
+% It also returns the the true spectrum and the remeshed point (since the
+% method works only approximately for periodic gain functions, the true
+% spectrum may differ from the assigned spectrum). Details can be found in 
+%
+% Sieber:  Generic stabilisability for time-delayed feedback control,
+% Preprint download at <http://arxiv.org/abs/1508.05671>
+% 
+% The function requires access to standard ddebiftool routines
+% dde_set_options df_deriv p_correc psol_eva psol_jac set_funcs
+% as available from  DDE-Biftool version 3.1:
+%
+% <https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download>
+%
+%% Inputs
+%
+% * |oderhs|: user-defined right-hand side of ODE for controlled system, of the form
+% 
+%   function y=oderhs(x,p,u)
+% 
+% where |x| and |y| are |n| dimensional, control input |u| is
+% one-dimensional and |p| are additional system parameters.
+% * |branch|: a branch of periodic orbits as computed by DDE-Biftool
+%
+%% Outputs:
+%
+% * |pcor| (point of kind |'psol'|): remeshed periodic orbit (again
+% corrected with Newton iteration for new mesh)
+% * |spec| ((2 n nint m) x 1 array): eigenvalues of periodic orbit with
+% ETDF
+% * |gains| (n x 1 array): gains constructed as suggested by Brunovsky
+% * |Ksmooth| (function |K=Ksmooth(x)|) function that returns gains along
+% orbit (u(t)=Ksmooth(x(t))[xtilde(t)-x(t)]
+%
+%% Optional inputs (name-value pairs)
+% 
+% * |'point'| (default |1|): point number selecting orbit along the branch
+% * |'delta'| (default |1e-2|): approximate length of interval relative to
+% period where feedback control is applied
+% * |'epsilon'| (default |1e-2|): parameter $\epsilon$ in the recursion for
+% extended time-delayed feedback
+% * |'t'| (default |0|): time at which control is applied (|x(t)|,
+% approximately until |x(t+delta)|)
+% * |'rho'| (default |0.1|): gain |K(x)| is ensured to be |0| further than
+% |rho| away from |x(t)|
+% * |'lambda'| (vector of |n| complex numbers): values to which eigenvalues
+% are assigned by Brunovsky's method (if not given, they are placed on the
+% circle of radius |(1-epsilon)/2|)
+% * |'n0'| (default 30): number of mesh points in |[delta+delta_change,1-delta_change]|
+% * |'n1'| (default 30): number of mesh points in |[0,delta]|
+% * |'n_change'| (default 10): number of mesh points in
+% |[delta,delta+delta_change]| and |[1-delta_change,1]| 
+% * |'delta_change'| (default |delta/10|): length of intervals where gains
+% transition from their non-zero value back to zero. 
+% * |'x_vectorized'| (default |true|): can |oderhs| called with arrays x of
+% shape (n x nvec) and u of shape (1 x nvec)?
+%%
+function [pcor,spec,gains,Ksmooth]=etdf_control(oderhs,branch,varargin)
+default={'point',1,'delta',1e-2,'epsilon',1e-2,'rho',0.1,...
+    'lambda',[],'n0',30,'n1',30,'n_change',10,'delta_change',[],'t',0,...
+    'x_vectorized',true,'hjac',1e-6};
+options=dde_set_options(default,varargin,'pass_on');
+if isempty(options.delta_change)
+    options.delta_change=options.delta/10;
+end
+pt0=branch.point(options.point);
+deg=pt0.degree;
+delta=options.delta;
+dc=options.delta_change;
+t0=options.t;
+%% shift periodic orbit such that control is applied at time 0 and remesh
+% (mesh is otherwise uniform)
+mesh1=linspace(t0,t0+delta,options.n1*deg+1);
+mesh_down=linspace(t0+delta,t0+delta+dc,options.n_change*deg+1);
+mesh0=linspace(t0+delta+dc,t0+1-dc,options.n0*deg+1);
+mesh_up=linspace(t0+1-dc,t0+1,options.n_change*deg+1);
+mesh=[mesh1,mesh_down(2:end),mesh0(2:end),mesh_up(2:end)];
+xprof=psol_eva(pt0.profile,pt0.mesh,mesh,pt0.degree);
+pt1=pt0;
+pt1.profile=xprof;
+pt1.mesh=mesh-mesh(1);
+pt1.mesh(end)=1;
+%% correct new point pt to periodic solution of discretised problem
+mth=branch.method.point;
+mth.adapt_mesh_after_correct=0;
+mth.adapt_mesh_before_correct=0;
+funcs=set_funcs(...
+    'sys_rhs',@(xx,p)etdf_controlled_rhs(xx,p,oderhs),...
+    'sys_tau',@()[],...
+    'x_vectorized',options.x_vectorized);
+warning('off','p_correc:nonsquare');
+[pcor,suc]=p_correc(funcs,pt1,branch.parameter.free,[],mth,0,pt1,0);
+warning('on','p_correc:nonsquare');
+assert(suc);
+%% compute monodromy matrix P0 and linearized input b0
+J=psol_jac(funcs,[],pcor.period,pcor.profile,pcor.mesh,pcor.degree,...
+    pcor.parameter,[],0,'wrapJ',false);
+[Q,Racc]=condensation(pcor,J);
+P0=Q*Racc;
+b0=df_deriv(struct('sys_rhs',@(xx,u)oderhs(xx,pcor.parameter,u)),pcor.profile(:,1),0,...
+    [],1,[],options.hjac);
+nx=length(b0);
+%% choose gains to assign spectrum approximately
+lambda=options.lambda;
+if isempty(lambda)
+    %% if lambda is not given, place eigenvalues on a circle
+    angles=linspace(0,2*pi,nx+1);
+    angles=angles(1:end-1);
+    if floor(nx/2)*2==nx
+        angles=angles+angles(2)/2;
+    end        
+    lambda=(1-options.epsilon)*exp(1i*angles)/2;
+end
+gains=SpecExpAssign(P0,-b0,lambda);
+assert(all(abs(eig(P0*expm(-b0*gains)))<1-options.epsilon));
+%% compute true Floquet multipliers for ETDF system
+pext=pcor;
+T=pext.period;
+pext.parameter(end+1)=T;
+x0=pcor.profile(:,1);
+y0=oderhs(x0,pcor.parameter,0)*T;
+Ksmooth=@(x)gain_of_x(x,gains/T,x0,y0,options.delta,options.delta_change,options.rho);
+pext.profile=[pext.profile;pext.profile];
+etdf_funcs=set_funcs(...
+    'sys_rhs',@(xx,p)etdf_controlled_rhs(xx,p(1:end-1),oderhs,'K',Ksmooth,'epsilon',options.epsilon),...
+    'sys_tau',@()length(pext.parameter),...
+    'x_vectorized',options.x_vectorized);
+spec=ext_eig(etdf_funcs,pext,options.epsilon);
+end
+%%
+function [Q,Racc,J]=condensation(point,J)
+%% condensate
+deg=point.degree;
+nint=(length(point.mesh)-1)/deg;
+ndim=size(point.profile,1);
+Q=eye(ndim);
+Racc=eye(ndim);
+for k=1:nint
+    ind=(k-1)*ndim*deg;
+    M=J(ind+(1:ndim*deg),ind+(1:ndim*(deg+1)));
+    Minv=M(:,ndim+1:end)\(-M(:,1:ndim));
+    A=Minv(end-ndim+1:end,:);
+    B=A*Q;
+    [Q,R]=qr(B);
+    Racc=R*Racc;
+end
+end
+%%
+function ev=ext_eig(funcs,pt,epsilon)
+[n,nt]=size(pt.profile);
+nx=n/2;
+xrg=1:nx;
+trg=nx+xrg;
+J=psol_jac(funcs,[],...
+    pt.period,pt.profile,pt.mesh,pt.degree,pt.parameter,[],false,...
+    'wrapJ',false,'Dtmat',diag([ones(nx,1);zeros(nx,1)]),'bc',false);
+Jr=reshape(J,[n,nt-1,n,2*nt-1]);
+Jrxx=Jr(xrg,:,xrg,:);
+Jrxt=Jr(xrg,:,trg,:);
+Jrtx=0*Jr(trg,:,xrg,:);
+Jrtt=0*Jr(trg,:,trg,:);
+for i=1:nt-1
+    Jrtt(xrg,i,xrg,i+1)=-(1-epsilon)*eye(nx);
+    Jrtx(xrg,i,xrg,i+1)=-epsilon*eye(nx);
+    Jrtt(xrg,i,xrg,nt+i)=eye(nx);
+end
+J2=reshape(cat(1,cat(3,Jrxx,Jrxt),cat(3,Jrtx,Jrtt)),size(J));
+[s1,s2]=size(J2);
+n_ext=s2-s1;
+M0=-J2(:,n_ext+1:end)\J2(:,1:n_ext);
+M=[zeros(n_ext-s1,s1),eye(n_ext-s1);M0];
+ev=eig(M);
+[~,ix]=sort(abs(ev),'descend');
+ev=ev(ix);
+end
+##### SOURCE END #####
+--></body></html>

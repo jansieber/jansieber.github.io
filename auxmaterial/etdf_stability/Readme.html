@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  <meta name="author" content="Jan Sieber">
+  <title>Table of content for supplementary material to Generic
+  stabilisability for time-delayed feedback control</title>
+
+  
+</head><body>
+<h1>Supplementary material for Generic
+  stabilisability for time-delayed feedback control</h1>
+<p> Author: Jan Sieber </p>
+This folder contains Matlab code and its output for illustrating
+examples used in
+<p> Jan Sieber: <em>Generic stabilisability for time-delayed feedback
+  control</em>, Preprint
+  download: <a href="http://arxiv.org/abs/1508.05671">arxiv:1508.05671</a>.</p>
+ List of Matlab scripts and their outputs:
+<ul>
+  <li><a href="html/HopfExample.html">Hopf example output</a> (html):
+  published Matlab output of <a href="HopfExample.m">HopfExample.m</a>
+  script. This shows the Matlab code with formatted comments and
+  graphs similar to the example section in the paper.</li>
+  <li><a href="html/ParametricPendulum.html">Output</a> (html) for
+  demo <a href="ParametricPendulum.m">ParametricPendulum.m</a> using
+  extended time-delayed feedback (ETDF) control to stabilise unstable
+  oscillations in a <strong>parametrically excited pendulum</strong>.
+  </li>
+</ul>
+List of Matlab functions used in the demonstration scripts:
+<ul>  
+<li><a href="SpecExpAssign.m">SpecExpAssign.m</a>: computes gains K to
+assign spectrum of matrix P exp(bK) for nxn matrix P and nx1 vector b.
+</li>
+<li><a href="etdf_controlled_rhs.m">etdf_controlled_rhs.m</a>: wrapper
+around right-hand side f (in x=f(x,p,u)) to make it fit into
+DDE-Biftool's format</li>
+<li><a href="etdf_control.m">etdf_control.m</a>: constructs ETDF gains
+for asymptotic parameters and compute true stability</li>
+<li><a href="gain_of_x.m">gain_of_x.m</a>: convert gain as contructed
+by Brunovsky to true x-dependent gain K(x)</li>
+</ul>
+Note that the Matlab functions and scripts rely on DDE-Biftool 3.1, available here: <a href="https://sourceforge.net/projects/ddebiftool">sourceforge.net/projects/ddebiftool</a>.
+</body></html>

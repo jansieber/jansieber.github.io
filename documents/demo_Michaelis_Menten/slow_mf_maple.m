@@ -1,0 +1,12 @@
+function slow_mf_maplereturn = slow_mf_maple(x0, kappa, lambda)
+  t1 = (x0 + kappa);
+  t4 = (x0 * kappa);
+  t5 = (t1 ^ 2);
+  t6 = (t5 ^ 2);
+  t10 = (kappa ^ 2);
+  t22 = (t10 ^ 2);
+  t23 = (t10 * kappa);
+  t28 = (lambda ^ 2);
+  t34 = (x0 ^ 2);
+  t46 = (t6 ^ 2);
+  slow_mf_maplereturn = [x0 / t1 t4 * lambda / t6 -t4 * lambda * (-2 * lambda * kappa + 3 * lambda * x0 + t10 + t4) / t6 / t5 / t1 t4 * lambda * (11 * kappa * lambda * t34 - 24 * kappa * t28 * x0 + 6 * lambda * t10 * x0 - 5 * lambda * t23 + 5 * t10 * t28 + t10 * t34 + 2 * t23 * x0 + 15 * t28 * t34 + t22) / t46 / t5];

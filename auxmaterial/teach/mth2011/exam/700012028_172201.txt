@@ -1,0 +1,28 @@
+MTH2011 - Provisional Exam feedback
+The point scores below are provisional, they may change during moderation and 
+are subject to approval by the exam board.
+Marks will appear after marking has finished. NaN means not yet marked.
+Check if the candidate number below is really yours.
+
+StudentId: 700012028
+Candidate Number: 104851
+Q1ai:   NaN
+Q1aii:  NaN
+Q1aiii: NaN
+Q1aiv:  NaN
+Q1av:   NaN
+Q1bi:   NaN
+Q1bii:  NaN
+Q1c:    NaN
+Q2a:    NaN
+Q2bi:   NaN
+Q2bii:  NaN
+Q3ai:   NaN
+Q3aii:  NaN
+Q3aiii: NaN
+Q3aiv:  NaN
+Q3b:    NaN
+Q4ai:   NaN
+Q4aii:  NaN
+Q4b:    NaN
+sum:    NaN

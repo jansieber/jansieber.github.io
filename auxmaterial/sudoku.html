@@ -1,0 +1,211 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Coloring maps/networks and solving sudokus Part II</title>
+    <script src="https://sagecell.sagemath.org/static/embedded_sagecell.js"></script>
+    <script>$(function () {
+    // Make *any* div with class 'compute' a Sage cell
+      sagecell.makeSagecell({
+      inputLocation: 'div.compute',
+      languages: ["python"],
+      linked: true,
+      evalButtonText: 'Execute code'});
+    });
+    </script>
+    <style>
+div.c {
+  text-align: center;
+}
+</style>
+  </head>
+  <body>
+    <h2>Computer program for solving sudokus by network coloring with a given number of colors </h2>
+    <h3>(University of Exeter, Jan Sieber)
+    </h3>
+    The part below uses the mathematical programming environment sage
+    (<a href="http://www.sagemath.org/">www.sagemath.org/</a>). The
+    cells with the numbered lines are programming code, which will be
+    executed on the free cloud
+    service <a href="https://sagecell.sagemath.org/">sagecell.sagemath.org/</a>
+<ul>
+  <li>
+The piece of computer program below is a modification of
+the <a href="coloring.html#colorRemaining">ColorRemaining</a> program
+that colors networks by systematically trying all possibilities. The
+modification allows for some nodes to have a unchangeable color
+assigned by the user.  Click 'Execute code' to load this function.
+<div class="compute"><script type="text/x-sage">
+def colorRemainingFixed(nodes, network, allowedColors, number, coloring, fixedColors):
+    if number == len(nodes):        # whole network colored
+        return 1
+    if fixedColors[number]:         # skip nodes with fixed color
+        return colorRemainingFixed(nodes,network,allowedColors,number+1,coloring,fixedColors)
+    neighborColors ={coloring[i] for i in network[nodes[number]]}
+    for c in list(allowedColors - neighborColors): # try all unused colors
+        coloring[nodes[number]] = c
+        ret=colorRemainingFixed(nodes,network,allowedColors, number+1, coloring, fixedColors)
+        if ret==1:                  # subnetwork successfully colored, return
+            return 1
+        coloring[nodes[number]] = 0 # not successful, try next color
+    return -1                       # no color found, backtrack to previous node
+print("loading of routine colorRemainingFixed completed")		    
+</script></div>
+Some other functions that are useful and needed are loaded below (feel free to ignore or explore).
+Click 'Execute code' to load these extra functions.
+<div class="compute"><script type="text/x-sage">
+import re
+def solveSudoku(fin):
+    coloringInitial=colorFromString(fin)
+    coloring={i:coloringInitial[i] for i in coloringInitial.keys()}
+    n2=int(max(coloring.keys())**0.5)
+    nsq=int(n2**0.5)
+    allowedColors=set(range(n2+1)).difference(set([0]))
+    network=createSudokuNetwork(nsq,1)
+    computeColoringFixed(network,coloring,allowedColors)
+    st=strSolution(coloring,n2)
+    return st
+print("loading of routine solveSudoku (which calls computeColoringFixed) completed")    
+
+def checkSolution(graph, coloring,initialColoring):
+    validColoring=True
+    for node in graph:
+        for neighbour in graph[node]:
+            if coloring[node] == coloring[neighbour]:
+                print("wrong coloring found "+ str(node) + " and " + str(neighbour) + " have the same color")
+                validColoring = False
+    for i in coloring.keys():
+        if initialColoring[i] and not initialColoring[i]==coloring[i]:
+                print("coloring at {0} changed from {1} to {2}".format(i,initialColoring[i],coloring[i]))
+                validColoring=False
+    if validColoring:
+        print("Coloring is valid")
+    return validColoring
+print("loading of routine checkSolution completed")		    
+def computeColoringFixed(network,coloring,allowedColors):
+    fixedColors=[coloring[i]>0 for i in coloring.keys()]
+    initialColoring={i:coloring[i] for i in coloring.keys()}
+    nodes=list(network)
+    ret=colorRemainingFixed(nodes,network,allowedColors, 0, coloring,fixedColors)
+    if ret>0:
+        print("coloring successful")
+        checkSolution(network,coloring,initialColoring)
+        return coloring
+    else:
+        print("coloring unsuccessful")
+        return initialColoring
+print("loading of routine computeColoringFixed (which calls colorRemainingFixed) completed")
+    
+def strSolution(color,n2):
+    length=len(f'{n2}')+1
+    fstr='{0:'+f'{length}'+'}'
+    st=''
+    for i in range(1,n2**2+1):
+        col=(i-1)%n2+1
+        st=st+fstr.format(color[i])
+        if col==n2:
+            st=st+'\\n'
+    return st
+    
+def createSudokuNetwork(n,indexStart=0):
+    s1=n
+    s2=n**2
+    s3=n**3
+    rn=set(range(n))
+    network={i:set([]) for i in range(n**4)}
+    for i0 in rn:
+        for i1 in rn:
+            for i2 in rn:
+                for i3 in rn:
+                    m=i3*s3+i2*s2+i1*s1+i0
+                    network[m]=network[m]|set([k0*s3+k1*s2+i1*s1+i0 for k0 in rn for k1 in rn])
+                    network[m]=network[m]|set([i3*s3+i2*s2+k1*s1+k0 for k0 in rn for k1 in rn])
+                    network[m]=network[m]|set([i3*s3+k1*s2+i1*s1+k0 for k0 in rn for k1 in rn])
+    network={i:list(network[i].difference(set([i]))) for i in network.keys()}
+    for i in network.keys():
+        network[i].sort()
+    if indexStart==1:
+        network={i+1:[j+1 for j in network[i]] for i in network.keys()}
+    return network
+
+def to_int(s):
+    try:
+        i=int(s)
+    except:  
+        i=0
+    return i
+print("loading of routine createSudokuNetwork completed")
+
+def colorFromString(flines):
+    flines=[re.split('[ ]',fl) for fl in re.split('[\\n]',flines)]
+    flines=[[s for s in fl if s] for fl in flines]
+    flines=[fl for fl in flines if fl]
+    colors=[[to_int(s) for s in l] for l in flines]
+    l=[len(s) for s in colors]
+    if not l[1:]==l[:-1]:
+        print('rows have different lengths')
+        return -1
+    colors=[i for s in colors for i in s]
+    coloring={i+1:colors[i] for i in range(len(colors))}
+    return coloring
+print("loading of routine colorFromString completed")
+</script></div>
+  </li>
+  <li> I have prepared a way to enter started sudoku puzzles in a big
+  square with a minus (-) at all empty places. Always leave a space
+  between entries and put each line onto a separate line. The block
+  with the sudoku needs to be enclosed by three doublequote marks as
+  the text after sudoku= below.
+    
+    Click 'Execute code' to run the code.
+<div class="compute"><script type="text/x-sage">
+sudoku="""
+- - 4  1 - 2  - - 3
+- - 2  - - -  - - -
+- - -  7 6 -  - 1 -
+
+- - 3  4 - -  - 8 -
+4 - 8  - - -  5 - 9
+- 2 -  - - 1  6 - -
+
+- 3 -  - 4 5  - - -
+- - -  - - -  7 - -
+5 - -  6 - 8  3 - -
+"""
+solved=solveSudoku(sudoku)
+print(solved)
+</script></div>
+  </li>
+  <li> Here is a 4x4x4 sudoku    
+    Click 'Execute code' to run the code.
+<div class="compute"><script type="text/x-sage">
+sudoku="""
+ 9  -  4  3    7 10 14 12   -  8 11  -   16  -  -  5
+13 10  -  -    -  4  - 16   -  - 14 15    -  -  -  -
+16  -  7  -    6  -  -  8   9  -  2  -    3 10  -  -
+ 5  8 12  -    -  -  3  -   - 16  - 10    -  -  6  -
+
+ 1  -  2  -    - 12  9  -   -  4  -  6    -  -  - 16
+12  -  -  -    8  -  -  -  14 13  -  7   10  1  -  -
+ -  - 10 13    1 15 16  -   -  -  -  9    8 12  -  -
+ 3 14  -  -   10 11  -  7  15  -  - 12    5  - 13  4
+
+ -  9  -  -    -  5  -  -   3 15  -  -    2  - 11  7
+ 6 16  -  -   13  -  -  -   -  -  -  2   14  -  3 12
+ -  -  -  -    9  6 12  -  13 11  -  8    4  -  -  -
+ - 15  3  -    -  -  -  -   4  - 12  -    -  -  8  -
+
+ 7  -  -  -    3  -  -  2   -  -  6  1   15  - 16  -
+ 2  -  -  -   11  - 15  -   - 14  -  4    -  -  -  -
+ 4  -  -  -    -  - 13  -   - 10  -  -    -  -  5  -
+15  -  8  9    -  -  4 10   -  5  -  -   13 11 12  -
+"""
+solved=solveSudoku(sudoku)
+print(solved)
+</script></div>
+  </li>
+</ul>
+Go back to  <a href="coloring.html">coloring</a>.
+  </body>
+</html>

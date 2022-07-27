@@ -1,0 +1,107 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Finding complete squares summing up to a prime for your own large prime</title>
+    <script src="https://sagecell.sagemath.org/static/embedded_sagecell.js"></script>
+    <script>$(function () {
+    // Make *any* div with class 'compute' a Sage cell
+      sagecell.makeSagecell({
+      inputLocation: 'div.compute',
+      linked: true,
+      evalButtonText: 'Evaluate'});
+    });
+    </script>
+    <style>
+div.c {
+  text-align: center;
+}
+</style>
+  </head>
+  <body>
+    <h2>References for Taster lecture </h2>
+    <h3>(University of Exeter, Jan Sieber)
+    </h3>
+    <ul>
+
+      <li>Simon Singh: Fermat's Last
+	Theorem <div class="c"><a href="https://en.wikipedia.org/wiki/Fermat%27s_Last_Theorem_(book)">
+	    Wikipedia</a></div>
+      </li>
+
+      <li>The theorem discussed in the lecture is a less famous but still interesting observation also made by Fermat:<br><br>
+	<div class="c">Every prime number p that is one above a
+	multiple of 4 (p=4k+1 for an integer k) is the sum of two
+	whole squares. </div><br>
+      </li>
+
+      <li>The Wikipedia page with different historical proofs of this
+      statement is here:<div class="c"><a title="Wikipedia"
+      href="https://en.wikipedia.org/wiki/Proofs_of_Fermat's_theorem_on_sums_of_two_squares">Wikipedia</a>.<div>
+      </li>
+
+      <li>How to find out if p is a prime number without trying factors (Miller-Rabin test):
+	<div class="c"><a href="https://en.wikipedia.org/wiki/Primality_test">Wikipedia</a>.</div>
+      </li>
+
+      <li>Approximately how many prime numbers have at most d digits?
+      <div class="c"><a href="https://en.wikipedia.org/wiki/Prime_number_theorem">Wikipedia</a><div>
+      </li>
+      
+      <li>
+	Approximately how many numbers with at most d digits can be
+	written as the sum of two complete
+	squares? <div class="c"><a href="https://en.wikipedia.org/wiki/Landau%E2%80%93Ramanujan_constant">Wikipedia</a></div>
+	</li>
+
+      <li>
+	Is the splitting of the prime p=4k+1 into a^2+b^2 unique?
+	<div class="c"><a href="https://math.stackexchange.com/questions/153603/diophantine-equation-a2b2-c2d2">math.stackexchange</a>.</div>
+      </li>
+      <li>See <a href="https://cocalc.com/share/6f0a6aad-b8dd-48bb-93cb-c5e125502b62/Exeter-Taster-lecture-JanSieber.sagews?viewer=share">CoCalc
+      Sagemath</a> page for further explanations.
+	</li>
+    </ul>
+    <h2>Finding complete squares summing up to a prime for your own
+      large prime</h2>
+
+    The part below uses the mathematical programming environment sage
+    (<a href="http://www.sagemath.org/">www.sagemath.org/</a>). The
+    cells with the numbered lines are programming code, which will be
+    executed on the free cloud
+    service <a href="https://sagecell.sagemath.org/">sagecell.sagemath.org/</a>
+<ul>
+  <li>
+Type in a large whole number p0 below (replace the 987654321 for example with 2^100) and then click on evaluate. This may take a few seconds as the sagecell server needs to start up a computation.
+<div class="compute"><script type="text/x-sage">
+p0=987654321
+print 'large number p0=',p0
+</script></div>
+  </li>
+  <li> The following block finds the next prime number p after p0 that has the form p=4k+1. This may take a while for large numbers p0. Click Evaluate to run the code.
+<div class="compute"><script type="text/x-sage">
+p=next_prime(p0)
+while mod(p,4)!=1:
+    p=next_prime(p)
+print 'Prime p=',p
+</script></div>
+  </li>
+  <li>The following block finds the whole numbers a and b such that the complete squares a^2 and b^2 add up to p. This should be faster than finding the large prime. Click Evaluate to run the code.
+    <div class="compute"><script type="text/x-sage">
+Zp=Integers(p); R=GaussianIntegers(); I=R(sqrt(-1))
+n=Zp(2)
+found=False
+while not found:
+    n2=n^((p-1)/4)
+    if n2^2==-1:
+        found=True
+    n=n+1
+n4=gcd(R(n2)+I,R(p))
+a,b=abs(real(n4)),abs(imag(n4))
+print 'a=',a,'\nb=',b,'\nCheck: a^2+b^2-p=',a^2+b^2-p
+</script></div>
+  </li>
+  </ul>
+  </body>
+</html>

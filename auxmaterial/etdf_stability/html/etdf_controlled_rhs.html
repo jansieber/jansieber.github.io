@@ -1,0 +1,137 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Wrapper around user-defined function to be used in DDE-Biftool</title><meta name="generator" content="MATLAB 8.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-02-28"><meta name="DC.source" content="etdf_controlled_rhs.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Wrapper around user-defined function to be used in DDE-Biftool</h1><!--introduction--><pre class="language-matlab"><span class="keyword">function</span> y=etdf_controlled_rhs(xx,p,oderhs,varargin)
+</pre><p>If <tt>varargin</tt> is empty then <tt>y=oderhs(xx,p,0)</tt> where <tt>xx</tt> was reshaped: <tt>xx=reshape(xx,[n,nvec])</tt>. Thus, oderhs can be used to perform bifurcation analysis on the ODE <tt>x'=oderhs(x,p,0)</tt>.</p><p>If options arguments <tt>'epsilon'</tt> and <tt>'K'</tt> are given then <tt>y=[y1;y2]</tt> where <tt>y1=f(x(t),p,K(x(t))[xtilde(t)-x(t)])</tt> and <tt>y2=xtilde(t)-(1-epsilon)xtilde(t-T)-epsilon x(t-T)</tt></p><!--/introduction--><pre class="codeinput"><span class="keyword">function</span> y=etdf_controlled_rhs(xx,p,oderhs,varargin)
+default={<span class="string">'K'</span>,[],<span class="string">'epsilon'</span>,[]};
+options=dde_set_options(default,varargin);
+n=size(xx,1);
+nd=size(xx,2);
+nvec=size(xx,3);
+<span class="keyword">if</span> isempty(options.K)
+    x=reshape(xx,[n,nvec]);
+    y=oderhs(x,p,zeros(1,nvec));
+<span class="keyword">else</span>
+    assert(nd==2);
+    nx=n/2;
+    assert(mod(nx,1)==0);
+    x=reshape(xx(1:nx,1,:),[nx,nvec]);
+    x_tau=reshape(xx(1:nx,2,:),[nx,nvec]);
+    xtilde=reshape(xx(nx+1:2*nx,1,:),[nx,nvec]);
+    xtilde_tau=reshape(xx(nx+1:2*nx,2,:),[nx,nvec]);
+    K=options.K(x);
+    u=sum(K.*(xtilde-x));
+    y_ode=oderhs(x,p,u);
+    y_recursion=xtilde-((1-options.epsilon)*xtilde_tau+options.epsilon*x_tau);
+    y=cat(1,y_ode,y_recursion);
+<span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Wrapper around user-defined function to be used in DDE-Biftool
+%
+%
+%   function y=etdf_controlled_rhs(xx,p,oderhs,varargin)
+%
+%
+% If |varargin| is empty then |y=oderhs(xx,p,0)| where |xx| was reshaped:
+% |xx=reshape(xx,[n,nvec])|. Thus, oderhs can be used to perform
+% bifurcation analysis on the ODE |x'=oderhs(x,p,0)|.
+%
+% If options arguments |'epsilon'| and |'K'| are given then |y=[y1;y2]|
+% where |y1=f(x(t),p,K(x(t))[xtilde(t)-x(t)])| and
+% |y2=xtilde(t)-(1-epsilon)xtilde(t-T)-epsilon x(t-T)|
+%
+%%
+function y=etdf_controlled_rhs(xx,p,oderhs,varargin)
+default={'K',[],'epsilon',[]};
+options=dde_set_options(default,varargin);
+n=size(xx,1);
+nd=size(xx,2);
+nvec=size(xx,3);
+if isempty(options.K)
+    x=reshape(xx,[n,nvec]);
+    y=oderhs(x,p,zeros(1,nvec));
+else
+    assert(nd==2);
+    nx=n/2;
+    assert(mod(nx,1)==0);
+    x=reshape(xx(1:nx,1,:),[nx,nvec]);
+    x_tau=reshape(xx(1:nx,2,:),[nx,nvec]);
+    xtilde=reshape(xx(nx+1:2*nx,1,:),[nx,nvec]);
+    xtilde_tau=reshape(xx(nx+1:2*nx,2,:),[nx,nvec]);
+    K=options.K(x);
+    u=sum(K.*(xtilde-x));
+    y_ode=oderhs(x,p,u);
+    y_recursion=xtilde-((1-options.epsilon)*xtilde_tau+options.epsilon*x_tau);
+    y=cat(1,y_ode,y_recursion);
+end
+end
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,172 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Convert gain as contructed by Brunovsky to true gain</title><meta name="generator" content="MATLAB 8.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-02-28"><meta name="DC.source" content="gain_of_x.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Convert gain as contructed by Brunovsky to true gain</h1><!--introduction--><p>Then one can use <tt>u=K[xtilde-x]</tt>.</p><p>Calling sequence</p><pre class="language-matlab"><span class="keyword">function</span> [K,Delta]=gain_of_x(x,K0,x0,y0,delta,delta_change,rho)
+</pre><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#2">Inputs</a></li><li><a href="#3">Outputs</a></li></ul></div><pre class="codeinput"><span class="keyword">function</span> [K,Delta]=gain_of_x(x,K0,x0,y0,delta,delta_change,rho)
+</pre><h2>Inputs<a name="2"></a></h2><div><ul><li><tt>x</tt> point (n x nvec)</li><li><tt>K0</tt> gain (nx1) (will be scaled by <tt>1/delta</tt>)</li><li><tt>x0</tt> point (nx1) on periodic orbit where gain should start to be equal to <tt>K0/delta</tt></li><li><tt>y0</tt> approximate derivative of periodic orbit in <tt>x0</tt></li><li><tt>delta</tt> approximate length of time interval where gains are to be equal to <tt>K0/delta</tt>. This is approximate because time t is approximated by t(x)=y0^T(x-x0)/(y0^Ty0). )</li><li><tt>rho</tt>: cutoff radius for gains (output K is zero if <tt>x-x0</tt>&gt;rho)</li></ul></div><h2>Outputs<a name="3"></a></h2><div><ul><li><tt>K</tt> (n x nvec) true gains</li><li><tt>Delta</tt> (n x nvec): <tt>K</tt> is <tt>Delta*K0</tt>.</li></ul></div><pre class="codeinput">xshape=size(x);
+[n,nvec]=size(x);
+xr=reshape(x,[n,nvec]);
+K0=K0(:);
+on=ones(1,n);
+onv=ones(1,nvec);
+xdist=sqrt(sum((xr-x0(:,onv)).^2));
+rg=xdist&lt;rho;
+yt=y0'/(y0'*y0);
+t=yt*(xr-x0(:,onv));
+Delta=zeros(1,nvec);
+s_up=t&lt;0&amp;t&gt;-delta_change;
+Delta(s_up)=smooth_step((t(s_up)+delta_change)/delta_change)/delta;
+s_on=t&gt;=0&amp;t&lt;=delta;
+Delta(s_on)=1/delta;
+s_down=t&gt;delta&amp;t&lt;delta+delta_change;
+Delta(s_down)=smooth_step((delta+delta_change-t(s_down))/delta_change)/delta;
+Delta(~rg)=0;
+K=Delta(on,:).*K0(:,onv);
+K=reshape(K,xshape);
+</pre><pre class="codeinput"><span class="keyword">end</span>
+</pre><pre class="codeinput"><span class="keyword">function</span> y=smooth_step(x,delta)
+<span class="keyword">if</span> nargin&lt;2
+    delta=1;
+<span class="keyword">end</span>
+nx=size(x);
+x=x(:);
+y=zeros(size(x));
+xd=x/delta;
+rg=xd&gt;0&amp;xd&lt;1;
+s=exp(-1./xd(rg));
+s1=exp(-1./(1-xd(rg)));
+y(rg)=s./(s+s1);
+y(xd&gt;=1)=1;
+y=reshape(y,nx);
+<span class="keyword">end</span>
+</pre><p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Convert gain as contructed by Brunovsky to true gain
+% Then one can use |u=K[xtilde-x]|.
+%
+% Calling sequence
+%
+%   function [K,Delta]=gain_of_x(x,K0,x0,y0,delta,delta_change,rho)
+%
+%%
+function [K,Delta]=gain_of_x(x,K0,x0,y0,delta,delta_change,rho)
+%% Inputs
+%
+% * |x| point (n x nvec)
+% * |K0| gain (nx1) (will be scaled by |1/delta|)
+% * |x0| point (nx1) on periodic orbit where gain should start to be equal
+% to |K0/delta|
+% * |y0| approximate derivative of periodic orbit in |x0|
+% * |delta| approximate length of time interval where gains are to be equal
+% to |K0/delta|. This is approximate because time t is approximated by
+% t(x)=y0^T(x-x0)/(y0^Ty0). )
+% * |rho|: cutoff radius for gains (output K is zero if |x-x0|>rho) 
+%% Outputs
+% * |K| (n x nvec) true gains
+% * |Delta| (n x nvec): |K| is |Delta*K0|.
+%%
+xshape=size(x);
+[n,nvec]=size(x);
+xr=reshape(x,[n,nvec]);
+K0=K0(:);
+on=ones(1,n);
+onv=ones(1,nvec);
+xdist=sqrt(sum((xr-x0(:,onv)).^2));
+rg=xdist<rho;
+yt=y0'/(y0'*y0);
+t=yt*(xr-x0(:,onv));
+Delta=zeros(1,nvec);
+s_up=t<0&t>-delta_change;
+Delta(s_up)=smooth_step((t(s_up)+delta_change)/delta_change)/delta;
+s_on=t>=0&t<=delta;
+Delta(s_on)=1/delta;
+s_down=t>delta&t<delta+delta_change;
+Delta(s_down)=smooth_step((delta+delta_change-t(s_down))/delta_change)/delta;
+Delta(~rg)=0;
+K=Delta(on,:).*K0(:,onv);
+K=reshape(K,xshape);
+end
+%%
+function y=smooth_step(x,delta)
+if nargin<2
+    delta=1;
+end
+nx=size(x);
+x=x(:);
+y=zeros(size(x));
+xd=x/delta;
+rg=xd>0&xd<1;
+s=exp(-1./xd(rg));
+s1=exp(-1./(1-xd(rg)));
+y(rg)=s./(s+s1);
+y(xd>=1)=1;
+y=reshape(y,nx);
+end
+
+##### SOURCE END #####
+--></body></html>

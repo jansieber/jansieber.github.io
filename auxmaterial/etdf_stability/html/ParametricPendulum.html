@@ -1,0 +1,401 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Demonstration of extended time-delayed feedback control on excited pendulum</title><meta name="generator" content="MATLAB 8.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2016-03-08"><meta name="DC.source" content="ParametricPendulum.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Demonstration of extended time-delayed feedback control on excited pendulum</h1><!--introduction--><p>Author: Jan Sieber</p><p>We consider a parametrically excited pendulum. The pendulum is driven at a frequency <img src="ParametricPendulum_eq08589834809570054062.png" alt="$\omega$"> close to its 1:2 resonance. At some forcing amplitude the trivial (hanging-down) solution becomes unstable and a period-two oscillation around the hanging-down state branches off in a period doubling. For <img src="ParametricPendulum_eq09567892195329089902.png" alt="$\omega<2$"> this period-doubled branch is unstable with a single unstable Floquet multiplier larger than unity.</p><p>Periodic orbits with an odd number of Floquet multipliers larger than one in periodically forced systems can usually not be stabilised with (extended) time-delayed feedback. The approach below circumvents this restriction by formulating the forcing as an autonomous Hopf normal form (Stuart-Landau) oscillator coupling into the pendulum equation (this is usually also done in an experimental implementation):</p><p><img src="ParametricPendulum_eq07600056337776130590.png" alt="$$ \ddot \theta=-\gamma \dot \theta-(1+p_1 y) \sin \theta +2 u$$"></p><p><img src="ParametricPendulum_eq12210992018697249554.png" alt="$$ y'= c p_2 y-\omega z - c y (y^2+z^2) +u$$"></p><p><img src="ParametricPendulum_eq13758742934166037791.png" alt="$$ z'= \omega y + c p_2 z - c z (y^2+z^2) +u$$"></p><p>where <img src="ParametricPendulum_eq12872509367766228172.png" alt="$\gamma=0.1$"> (damping), <img src="ParametricPendulum_eq07710416922044144274.png" alt="$c=0.1$"> (attraction rate of periodic orbit in auxilliary oscillator <img src="ParametricPendulum_eq14016728082227472558.png" alt="$(y,z)$">) and <img src="ParametricPendulum_eq14480803116582121145.png" alt="$\omega=1.8$">. The control input is linear through  <img src="ParametricPendulum_eq17461685835934715695.png" alt="$\partial_2f(x,0)=b=(0,2,1,1)^T$">. The extended time-delayed feedback control is of the form</p><p><img src="ParametricPendulum_eq14060456685127297670.png" alt="$$ u(t)=K(x(t))[\tilde x(t)-x(t)] $$"></p><p><img src="ParametricPendulum_eq10532854903533175006.png" alt="$$ \tilde x(t)=(1-\varepsilon) \tilde x(t-T) + \varepsilon x(t-T) $$"></p><p>where both, <img src="ParametricPendulum_eq14833433867325483769.png" alt="$x(t)$"> and <img src="ParametricPendulum_eq13421649829266264942.png" alt="$\tilde x(t)$"> have four components: <img src="ParametricPendulum_eq08288499342375314727.png" alt="$\theta$">, <img src="ParametricPendulum_eq03159678245289978623.png" alt="$\dot\theta$">, <img src="ParametricPendulum_eq08830444604280721118.png" alt="$y$"> and <img src="ParametricPendulum_eq17119888974628994297.png" alt="$z$">. In a practical experiment the above control would likely require two inputs: real-time torque control at the pivot of the pendulum and a a real-time modification of the (eg) actuator creating the periodic forcing.</p><p>The bifurcation diagram and the stability of the system with delay are computed using DDE-Biftool version 3.1, available from</p><p><a href="https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download">https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download</a></p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Code</a></li><li><a href="#2">Preparation: add path and define right-hand side</a></li><li><a href="#3">Contruct bifurcation diagram</a></li><li><a href="#4">Increase forcing oscillator amplitude to 1</a></li><li><a href="#5">Increase forcing of pendulum</a></li><li><a href="#6">Branch off at period doubling</a></li><li><a href="#7">Plot bifurcation diagram</a></li><li><a href="#8">Construct gains for control and compute stability for controlled periodic orbit</a></li><li><a href="#9">Plot of gains K as constructed</a></li><li><a href="#10">Illustration of spectrum for controlled system</a></li><li><a href="#12">Zoom in</a></li><li><a href="#13">How does the true x-dependent gain look like?</a></li></ul></div><h2>Code<a name="1"></a></h2><h2>Preparation: add path and define right-hand side<a name="2"></a></h2><p><tt>x</tt> is <img src="ParametricPendulum_eq18125999827448178448.png" alt="$(\theta,\dot\theta,y,z)$"> and the parameter set <tt>p</tt> is <img src="ParametricPendulum_eq08906807936309320057.png" alt="$(p-1,p_2)$">. Modify the path below to lead to the local <tt>ddebiftool</tt> folders.</p><pre class="codeinput">clear
+close <span class="string">all</span>
+addpath(<span class="string">'../dde_biftool/ddebiftool'</span>);
+addpath(<span class="string">'../dde_biftool/ddebiftool_utilities'</span>);
+damping=0.1;
+omega=1.8;
+c=0.1;
+pendulum=@(x,p,u)[<span class="keyword">...</span>
+    x(2,:);<span class="keyword">...</span>
+    -damping*x(2,:)-(1+p(1)*x(3,:)).*sin(x(1,:))+2*u;<span class="keyword">...</span>
+    c*p(2)*x(3,:)-omega*x(4,:)-c*x(3,:).*(x(3,:).^2+x(4,:).^2)+u;<span class="keyword">...</span>
+    omega*x(3,:)+c*p(2)*x(4,:)-c*x(4,:).*(x(3,:).^2+x(4,:).^2)+u];
+funcs=set_funcs(<span class="keyword">...</span>
+    <span class="string">'sys_rhs'</span>,@(xx,p)etdf_controlled_rhs(xx,p,pendulum),<span class="keyword">...</span>
+    <span class="string">'sys_tau'</span>,@()[],<span class="keyword">...</span>
+    <span class="string">'x_vectorized'</span>,true);
+</pre><h2>Contruct bifurcation diagram<a name="3"></a></h2><p>Continue equilibria <img src="ParametricPendulum_eq08008942819616491964.png" alt="$x=(0,0,0,0)^T$"> initially in <img src="ParametricPendulum_eq03052410687656979467.png" alt="$p_2$"> and branch off at Hopf bifurcation at <img src="ParametricPendulum_eq06302245970529478925.png" alt="$p_2=0$"> (<img src="ParametricPendulum_eq13137298398265577444.png" alt="$p_1$">, the forcing amplitue is <tt>0</tt> initially). Then continue the family of stable periodic orbits (which are trivial in|theta|: <tt>x(1)=x(2)=0</tt>) until <img src="ParametricPendulum_eq09847645568548556590.png" alt="$p_2=1$">.</p><pre class="codeinput">[stbr,suc]=SetupStst(funcs,<span class="string">'x'</span>,[0;0;0;0],<span class="string">'parameter'</span>,[0,-0.2],<span class="keyword">...</span>
+    <span class="string">'contpar'</span>,2,<span class="string">'dir'</span>,2,<span class="string">'step'</span>,1e-1);
+display(suc)
+stbr.method.continuation.plot=0;
+stbr=br_contn(funcs,stbr,5);
+[nunst_stst,~,~,stbr.point]=GetStability(stbr,<span class="string">'funcs'</span>,funcs);
+</pre><pre class="codeoutput">
+suc =
+
+     1
+
+</pre><h2>Increase forcing oscillator amplitude to 1<a name="4"></a></h2><p>note that forcing enters the pendulum with prefactor p(1)</p><pre class="codeinput">[oscillator_up,suc]=SetupPsol(funcs,stbr,find(nunst_stst==2,1,<span class="string">'first'</span>),<span class="keyword">...</span>
+    <span class="string">'radius'</span>,0.05,<span class="string">'max_bound'</span>,[2,1]);
+display(suc)
+oscillator_up.method.continuation.plot=0;
+oscillator_up=br_contn(funcs,oscillator_up,20);
+</pre><pre class="codeoutput">
+suc =
+
+     1
+
+BR_CONTN warning: boundary hit.
+</pre><h2>Increase forcing of pendulum<a name="5"></a></h2><p>Now we vary <img src="ParametricPendulum_eq13137298398265577444.png" alt="$p_1$">, the forcing amplitude of the pendulum, increasing it from <img src="ParametricPendulum_eq00202142981986870057.png" alt="$0$"> until we obseve a period doubling bifurcation (which occurs below <img src="ParametricPendulum_eq04274255642035162228.png" alt="$p_1=1$">). The solution is still trivial in <img src="ParametricPendulum_eq08288499342375314727.png" alt="$\theta$">.</p><pre class="codeinput">[trivial,suc]=ChangeBranchParameters(funcs,oscillator_up,<span class="keyword">...</span>
+    length(oscillator_up.point),<span class="string">'contpar'</span>,1,<span class="string">'dir'</span>,1,<span class="string">'step'</span>,0.1,<span class="string">'max_bound'</span>,[1,1]);
+display(suc)
+trivial=br_contn(funcs,trivial,100);
+[nunst_triv,~,~,trivial.point]=GetStability(trivial,<span class="string">'funcs'</span>,funcs,<span class="keyword">...</span>
+    <span class="string">'exclude_trivial'</span>,true);
+</pre><pre class="codeoutput">
+suc =
+
+     1
+
+BR_CONTN warning: boundary hit.
+</pre><h2>Branch off at period doubling<a name="6"></a></h2><p>The period doubling is subcritical such that the emerging period-two oscillation (corresponding to a swinging around the hanging-down position) is unstable. The swinging solution folds in a saddle-node bifurcation, becoming stable at some <img src="ParametricPendulum_eq17649564579448946544.png" alt="$p_{1,\mathrm{fold}}$">.</p><pre class="codeinput">ind_branch=find(nunst_triv==1,1,<span class="string">'first'</span>);
+[swing,suc]=DoublePsol(funcs,trivial,ind_branch,<span class="string">'max_step'</span>,[0,0.1],<span class="keyword">...</span>
+    <span class="string">'max_bound'</span>,[1,trivial.point(ind_branch).parameter(1)+0.1],<span class="string">'radius'</span>,0.1);
+display(suc)
+swing=br_contn(funcs,swing,100);
+[nunst_swing,dom,~,swing.point]=GetStability(swing,<span class="string">'funcs'</span>,funcs,<span class="string">'exclude_trivial'</span>,true);
+</pre><pre class="codeoutput">
+suc =
+
+     1
+
+BR_CONTN warning: boundary hit.
+</pre><h2>Plot bifurcation diagram<a name="7"></a></h2><pre class="codeinput">x_triv=arrayfun(@(p)max(abs(p.profile(1,:))),trivial.point);
+p_triv=arrayfun(@(p)p.parameter(1),trivial.point);
+x_swing=arrayfun(@(p)max(p.profile(1,:)),swing.point);
+p_swing=arrayfun(@(p)p.parameter(1),swing.point);
+floq_swing=cell2mat(arrayfun(@(p)p.stability.mu,swing.point,<span class="string">'uniformoutput'</span>,false));
+T_swing=[swing.point.period];
+figure(1);clf;
+subplot(1,2,1);
+plot(p_triv,x_triv,<span class="string">'.-'</span>,p_swing,x_swing,<span class="string">'o-'</span>);
+xlabel(<span class="string">'p_1'</span>);ylabel(<span class="string">'amplitude angle'</span>);
+legend(<span class="string">'hanging down'</span>,<span class="string">'swinging'</span>);
+title(<span class="string">'Period-two oscillations'</span>)
+subplot(1,2,2);
+plot(abs(floq_swing),x_swing,<span class="string">'ko'</span>);
+ylabel(<span class="string">'swing amplitude'</span>);xlabel(<span class="string">'modulus of Floquet multipliers'</span>);
+title(<span class="string">'Stability'</span>)
+</pre><img vspace="5" hspace="5" src="ParametricPendulum_01.png" alt=""> <h2>Construct gains for control and compute stability for controlled periodic orbit<a name="8"></a></h2><p>The function <tt>etdf_control</tt> remeshes the time point mesh along the orbit (to discretize the short large near-impulse of feedback control with a finer mesh). Then it recomputes the orbit using the new mesh (with <tt>p_correc</tt>), and computes the gains using the asymptotic formula by Brunovsky'69. The gains <img src="ParametricPendulum_eq06643176732083333865.png" alt="$K_0$"> are chosen such that the eigenvalues of <img src="ParametricPendulum_eq05787594665606042935.png" alt="$P_0\exp(b(0)K_0^T)$"> are placed on a circle of radious <img src="ParametricPendulum_eq07812074223268534135.png" alt="$(1-\varepsilon)/2$">.</p><p>The time of control input is the interval <img src="ParametricPendulum_eq16457202413066742610.png" alt="$[0,\delta]$"> (controlled by optional parameter <tt>'t'</tt>).</p><pre class="codeinput">orbits=find(nunst_swing==1); <span class="comment">% find unstable periodic orbits</span>
+clear <span class="string">pcorrected</span> <span class="string">spec</span> <span class="string">gain</span>
+epsilon=0.1;
+<span class="keyword">for</span> i=length(orbits):-1:1
+    [pcorrected(i),spec(:,i),gain(:,i)]=etdf_control(pendulum,swing,<span class="keyword">...</span>
+        <span class="string">'point'</span>,orbits(i),<span class="keyword">...</span>
+    <span class="string">'t'</span>,0,<span class="string">'delta'</span>,1e-4,<span class="string">'epsilon'</span>,epsilon,<span class="string">'rho'</span>,0.1,<span class="string">'n1'</span>,5,<span class="string">'n_change'</span>,5,<span class="string">'n0'</span>,10);
+<span class="keyword">end</span>
+display(spec(1:3,:),<span class="string">'dominant eigenvalues of controlled system'</span>)
+</pre><pre class="codeoutput">
+dominant eigenvalues of controlled system =
+
+  Columns 1 through 4
+
+   1.0000 + 0.0000i   1.0000 + 0.0000i   1.0000 + 0.0000i   1.0000 + 0.0000i
+   0.8999 + 0.0197i   0.9027 + 0.0189i   0.9032 + 0.0187i   0.9033 + 0.0187i
+   0.8999 - 0.0197i   0.9027 - 0.0189i   0.9032 - 0.0187i   0.9033 - 0.0187i
+
+  Columns 5 through 8
+
+   1.0000 + 0.0000i   1.0000 + 0.0000i   1.0000 + 0.0000i   1.0000 + 0.0000i
+   0.9034 + 0.0186i   0.9034 + 0.0186i   0.9034 + 0.0186i   0.9034 + 0.0186i
+   0.9034 - 0.0186i   0.9034 - 0.0186i   0.9034 - 0.0186i   0.9034 - 0.0186i
+
+  Columns 9 through 10
+
+   1.0000 + 0.0000i   1.0000 + 0.0000i
+   0.9032 + 0.0187i   0.9026 + 0.0189i
+   0.9032 - 0.0187i   0.9026 - 0.0189i
+
+</pre><h2>Plot of gains K as constructed<a name="9"></a></h2><pre class="codeinput">figure(2);clf
+plot(x_swing(orbits),gain,<span class="string">'.-'</span>);
+set(gca,<span class="string">'ylim'</span>,max(abs(gain(:)))*[-1,1],<span class="string">'xlim'</span>,[0,max(x_swing(orbits))]);
+legend(<span class="string">'gain K_1'</span>,<span class="string">'gain K_2'</span>,<span class="string">'gain K_3'</span>,<span class="string">'gain K_4'</span>);
+xlabel(<span class="string">'swing amplitude'</span>);
+grid <span class="string">on</span>
+</pre><img vspace="5" hspace="5" src="ParametricPendulum_02.png" alt=""> <h2>Illustration of spectrum for controlled system<a name="10"></a></h2><p>for periodic orbit with amplitude near <tt>xmax=1</tt></p><pre class="codeinput">[~,ind]=min(abs(x_swing-1));
+epsilon=0.1;
+[pt0,spec0,gain0,Ksmooth]=etdf_control(pendulum,swing,<span class="string">'point'</span>,ind,<span class="keyword">...</span>
+    <span class="string">'t'</span>,0,<span class="string">'delta'</span>,5e-4,<span class="string">'epsilon'</span>,epsilon,<span class="string">'rho'</span>,0.1);
+</pre><pre class="codeinput">figure(2);clf
+deco={<span class="string">'markersize'</span>,10};
+plot(cosd(0:360),sind(0:360),real(spec0),imag(spec0),<span class="string">'.'</span>,deco{:});
+grid <span class="string">on</span>
+xlabel(<span class="string">'Re \lambda'</span>);
+ylabel(<span class="string">'Im \lambda'</span>);
+title(sprintf(<span class="string">'Spectrum of controlled system for p_1=%g'</span>,pt0.parameter(1)));
+drawnow
+</pre><img vspace="5" hspace="5" src="ParametricPendulum_03.png" alt=""> <h2>Zoom in<a name="12"></a></h2><pre class="codeinput">hold <span class="string">on</span>
+plot(1-epsilon/2+epsilon/2*cosd(0:360),epsilon/2*sind(0:360));
+set(gca,<span class="string">'xlim'</span>,[1-epsilon*1.1,1+epsilon/2],<span class="string">'ylim'</span>,epsilon*0.6*[-1,1]);
+</pre><img vspace="5" hspace="5" src="ParametricPendulum_04.png" alt=""> <h2>How does the true x-dependent gain look like?<a name="13"></a></h2><p>The control is only applied in a small area of size <tt>delta</tt> and scaled by <tt>1/delta</tt>.</p><pre class="codeinput">figure(3);clf
+subplot(1,2,1);
+K=Ksmooth(pt0.profile);
+ind=find(all(abs(K)&lt;1e-4),1,<span class="string">'first'</span>)+2;
+plot(pt0.mesh(1:ind)*pt0.period,K(:,1:ind),<span class="string">'.-'</span>);
+grid <span class="string">on</span>;
+xlabel(<span class="string">'time'</span>);
+ylabel(<span class="string">'\Delta_\delta(x(t)) K(x(t))'</span>);
+subplot(1,2,2);
+ind=find(all(abs(K)&lt;1e-4),1,<span class="string">'last'</span>)-2;
+plot(pt0.mesh(ind:end)*pt0.period,K(:,ind:end),<span class="string">'.-'</span>);
+grid <span class="string">on</span>;
+xlabel(<span class="string">'time'</span>);
+ylabel(<span class="string">'\Delta_\delta(x(t)) K(x(t))'</span>);
+</pre><img vspace="5" hspace="5" src="ParametricPendulum_05.png" alt=""> <p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2014b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Demonstration of extended time-delayed feedback control on excited pendulum
+%
+% Author: Jan Sieber
+%
+% We consider a parametrically excited pendulum. The pendulum is driven at
+% a frequency $\omega$ close to its 1:2 resonance. At some forcing
+% amplitude the trivial (hanging-down) solution becomes unstable and a
+% period-two oscillation around the hanging-down state branches off in a
+% period doubling. For $\omega<2$ this period-doubled branch is unstable
+% with a single unstable Floquet multiplier larger than unity.
+%
+% Periodic orbits with an odd number of Floquet multipliers larger than one
+% in periodically forced systems can usually not be stabilised with
+% (extended) time-delayed feedback. The approach below circumvents this
+% restriction by formulating the forcing as an autonomous Hopf normal form
+% (Stuart-Landau) oscillator coupling into the pendulum equation (this is
+% usually also done in an experimental implementation):
+%
+% $$ \ddot \theta=-\gamma \dot \theta-(1+p_1 y) \sin \theta +2 u$$
+%
+% $$ y'= c p_2 y-\omega z - c y (y^2+z^2) +u$$
+%
+% $$ z'= \omega y + c p_2 z - c z (y^2+z^2) +u$$
+%
+% where $\gamma=0.1$ (damping), $c=0.1$ (attraction rate of periodic orbit
+% in auxilliary oscillator $(y,z)$) and $\omega=1.8$. The control input is
+% linear through  $\partial_2f(x,0)=b=(0,2,1,1)^T$. The extended
+% time-delayed feedback control is of the form
+%
+% $$ u(t)=K(x(t))[\tilde x(t)-x(t)] $$
+%
+% $$ \tilde x(t)=(1-\varepsilon) \tilde x(t-T) + \varepsilon x(t-T) $$
+%
+% where both, $x(t)$ and $\tilde x(t)$ have four components: $\theta$,
+% $\dot\theta$, $y$ and $z$. In a practical experiment the above control
+% would likely require two inputs: real-time torque control at the pivot of
+% the pendulum and a a real-time modification of the (eg) actuator creating
+% the periodic forcing.
+%
+% The bifurcation diagram and the stability of the system with delay are
+% computed using DDE-Biftool version 3.1, available from
+%
+% <https://sourceforge.net/projects/ddebiftool/files/dde_biftool_v3.1.zip/download>
+%
+%% Code
+%% Preparation: add path and define right-hand side
+% |x| is $(\theta,\dot\theta,y,z)$ and the parameter set |p| is
+% $(p-1,p_2)$. Modify the path below to lead to the local |ddebiftool|
+% folders.
+clear
+close all
+addpath('../dde_biftool/ddebiftool');
+addpath('../dde_biftool/ddebiftool_utilities');
+damping=0.1;
+omega=1.8;
+c=0.1;
+pendulum=@(x,p,u)[...
+    x(2,:);...
+    -damping*x(2,:)-(1+p(1)*x(3,:)).*sin(x(1,:))+2*u;...
+    c*p(2)*x(3,:)-omega*x(4,:)-c*x(3,:).*(x(3,:).^2+x(4,:).^2)+u;...
+    omega*x(3,:)+c*p(2)*x(4,:)-c*x(4,:).*(x(3,:).^2+x(4,:).^2)+u];
+funcs=set_funcs(...
+    'sys_rhs',@(xx,p)etdf_controlled_rhs(xx,p,pendulum),...
+    'sys_tau',@()[],...
+    'x_vectorized',true);
+%% Contruct bifurcation diagram
+% Continue equilibria $x=(0,0,0,0)^T$ initially in $p_2$ and branch off at
+% Hopf bifurcation at $p_2=0$ ($p_1$, the forcing amplitue is |0|
+% initially). Then continue the family of stable periodic orbits (which are
+% trivial in|theta|: |x(1)=x(2)=0|) until $p_2=1$.
+[stbr,suc]=SetupStst(funcs,'x',[0;0;0;0],'parameter',[0,-0.2],...
+    'contpar',2,'dir',2,'step',1e-1);
+display(suc)
+stbr.method.continuation.plot=0;
+stbr=br_contn(funcs,stbr,5);
+[nunst_stst,~,~,stbr.point]=GetStability(stbr,'funcs',funcs);
+%% Increase forcing oscillator amplitude to 1
+% note that forcing enters the pendulum with prefactor p(1)
+[oscillator_up,suc]=SetupPsol(funcs,stbr,find(nunst_stst==2,1,'first'),...
+    'radius',0.05,'max_bound',[2,1]);
+display(suc)
+oscillator_up.method.continuation.plot=0;
+oscillator_up=br_contn(funcs,oscillator_up,20);
+%% Increase forcing of pendulum
+% Now we vary $p_1$, the forcing amplitude of the pendulum, increasing it
+% from $0$ until we obseve a period doubling bifurcation (which occurs
+% below $p_1=1$). The solution is still trivial in $\theta$.
+[trivial,suc]=ChangeBranchParameters(funcs,oscillator_up,...
+    length(oscillator_up.point),'contpar',1,'dir',1,'step',0.1,'max_bound',[1,1]);
+display(suc)
+trivial=br_contn(funcs,trivial,100);
+[nunst_triv,~,~,trivial.point]=GetStability(trivial,'funcs',funcs,...
+    'exclude_trivial',true);
+%% Branch off at period doubling
+% The period doubling is subcritical such that the emerging period-two
+% oscillation (corresponding to a swinging around the hanging-down
+% position) is unstable. The swinging solution folds in a saddle-node
+% bifurcation, becoming stable at some $p_{1,\mathrm{fold}}$.
+ind_branch=find(nunst_triv==1,1,'first');
+[swing,suc]=DoublePsol(funcs,trivial,ind_branch,'max_step',[0,0.1],...
+    'max_bound',[1,trivial.point(ind_branch).parameter(1)+0.1],'radius',0.1);
+display(suc)
+swing=br_contn(funcs,swing,100);
+[nunst_swing,dom,~,swing.point]=GetStability(swing,'funcs',funcs,'exclude_trivial',true);
+%% Plot bifurcation diagram
+x_triv=arrayfun(@(p)max(abs(p.profile(1,:))),trivial.point);
+p_triv=arrayfun(@(p)p.parameter(1),trivial.point);
+x_swing=arrayfun(@(p)max(p.profile(1,:)),swing.point);
+p_swing=arrayfun(@(p)p.parameter(1),swing.point);
+floq_swing=cell2mat(arrayfun(@(p)p.stability.mu,swing.point,'uniformoutput',false));
+T_swing=[swing.point.period];
+figure(1);clf;
+subplot(1,2,1);
+plot(p_triv,x_triv,'.-',p_swing,x_swing,'o-');
+xlabel('p_1');ylabel('amplitude angle');
+legend('hanging down','swinging');
+title('Period-two oscillations')
+subplot(1,2,2);
+plot(abs(floq_swing),x_swing,'ko');
+ylabel('swing amplitude');xlabel('modulus of Floquet multipliers');
+title('Stability')
+%% Construct gains for control and compute stability for controlled periodic orbit
+% The function |etdf_control| remeshes the time point mesh along the orbit
+% (to discretize the short large near-impulse of feedback control with a
+% finer mesh).
+% Then it recomputes the orbit using the new mesh (with |p_correc|), and
+% computes the gains using the asymptotic formula by Brunovsky'69. The
+% gains $K_0$ are chosen such that the eigenvalues of $P_0\exp(b(0)K_0^T)$ are
+% placed on a circle of radious $(1-\varepsilon)/2$.
+%
+% The time of control input is the interval $[0,\delta]$ (controlled by
+% optional parameter |'t'|).
+orbits=find(nunst_swing==1); % find unstable periodic orbits
+clear pcorrected spec gain
+epsilon=0.1;
+for i=length(orbits):-1:1
+    [pcorrected(i),spec(:,i),gain(:,i)]=etdf_control(pendulum,swing,...
+        'point',orbits(i),...
+    't',0,'delta',1e-4,'epsilon',epsilon,'rho',0.1,'n1',5,'n_change',5,'n0',10);
+end
+display(spec(1:3,:),'dominant eigenvalues of controlled system')
+
+%% Plot of gains K as constructed
+figure(2);clf
+plot(x_swing(orbits),gain,'.-');
+set(gca,'ylim',max(abs(gain(:)))*[-1,1],'xlim',[0,max(x_swing(orbits))]);
+legend('gain K_1','gain K_2','gain K_3','gain K_4');
+xlabel('swing amplitude');
+grid on
+%% Illustration of spectrum for controlled system
+% for periodic orbit with amplitude near |xmax=1|
+[~,ind]=min(abs(x_swing-1));
+epsilon=0.1;
+[pt0,spec0,gain0,Ksmooth]=etdf_control(pendulum,swing,'point',ind,...
+    't',0,'delta',5e-4,'epsilon',epsilon,'rho',0.1);
+%%
+figure(2);clf
+deco={'markersize',10};
+plot(cosd(0:360),sind(0:360),real(spec0),imag(spec0),'.',deco{:});
+grid on
+xlabel('Re \lambda');
+ylabel('Im \lambda');
+title(sprintf('Spectrum of controlled system for p_1=%g',pt0.parameter(1)));
+drawnow
+%% Zoom in
+hold on
+plot(1-epsilon/2+epsilon/2*cosd(0:360),epsilon/2*sind(0:360));
+set(gca,'xlim',[1-epsilon*1.1,1+epsilon/2],'ylim',epsilon*0.6*[-1,1]);
+%% How does the true x-dependent gain look like?
+% The control is only applied in a small area of size |delta| and scaled by
+% |1/delta|.
+figure(3);clf
+subplot(1,2,1);
+K=Ksmooth(pt0.profile);
+ind=find(all(abs(K)<1e-4),1,'first')+2;
+plot(pt0.mesh(1:ind)*pt0.period,K(:,1:ind),'.-');
+grid on;
+xlabel('time');
+ylabel('\Delta_\delta(x(t)) K(x(t))');
+subplot(1,2,2);
+ind=find(all(abs(K)<1e-4),1,'last')-2;
+plot(pt0.mesh(ind:end)*pt0.period,K(:,ind:end),'.-');
+grid on;
+xlabel('time');
+ylabel('\Delta_\delta(x(t)) K(x(t))');
+
+##### SOURCE END #####
+--></body></html>
