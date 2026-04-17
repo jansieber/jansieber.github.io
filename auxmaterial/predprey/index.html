@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predator–Prey Simulation</title>
+  <style>
+    :root {
+      --base:    #1e1e2e;
+      --surface: #313244;
+      --overlay: #45475a;
+      --text:    #cdd6f4;
+      --sub:     #a6adc8;
+      --green:   #a6e3a1;
+      --orange:  #fab387;
+      --red:     #f38ba8;
+      --blue:    #89b4fa;
+      --teal:    #94e2d5;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--base);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+      gap: 16px;
+    }
+    h1 { font-size: 1.4rem; letter-spacing: .04em; color: var(--teal); }
+
+    /* ── controls ── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+      background: var(--surface);
+      padding: 16px 20px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 800px;
+    }
+    .ctrl { display: flex; flex-direction: column; gap: 4px; }
+    label {
+      font-size: .72rem;
+      color: var(--sub);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    input[type=number] {
+      width: 76px;
+      padding: 6px 8px;
+      background: var(--base);
+      border: 1px solid var(--overlay);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: .9rem;
+    }
+    input[type=range] { width: 110px; accent-color: var(--blue); }
+    .speed-row { display: flex; align-items: center; gap: 6px; }
+    .speed-val { font-size: .8rem; color: var(--sub); min-width: 44px; }
+    .btns { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+    button {
+      padding: 8px 18px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: filter .15s;
+    }
+    button:hover { filter: brightness(.85); }
+    #btn-start { background: var(--green);  color: #1e1e2e; }
+    #btn-stop  { background: var(--red);    color: #1e1e2e; }
+    #btn-reset { background: var(--blue);   color: #1e1e2e; }
+
+    /* ── main layout ── */
+    .main {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    /* ── board ── */
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 72px);
+      grid-template-rows:    repeat(8, 72px);
+      gap: 3px;
+      background: var(--overlay);
+      padding: 4px;
+      border-radius: 10px;
+    }
+    .cell {
+      border-radius: 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: background-color .18s;
+      user-select: none;
+    }
+    .cell .icon { font-size: 1.3rem; line-height: 1; }
+    .cell .cnt  { font-size: .65rem; font-weight: 700; color: rgba(0,0,0,.5); margin-top: 2px; }
+
+    .cell.empty     { background: var(--surface); }
+    .cell.alt       { background: #2a2a3c; }
+    .cell.rabbit    { background: #1e3d2a; }
+    .cell.fox       { background: #3d2814; }
+    .cell.predation { background: #4a1e25; }
+    .cell.breeding  { background: #163326; }
+
+    /* ── stats panel ── */
+    .stats {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 154px;
+      align-self: flex-start;
+    }
+    .si { display: flex; flex-direction: column; gap: 2px; }
+    .si .lbl { font-size: .7rem; color: var(--sub); text-transform: uppercase; letter-spacing: .05em; }
+    .si .val { font-size: 1.9rem; font-weight: 800; }
+    .si.s-step   .val { color: var(--teal); }
+    .si.s-rabbit .val { color: var(--green); }
+    .si.s-fox    .val { color: var(--orange); }
+    .status { font-size: .78rem; color: var(--sub); min-height: 1.2em; }
+
+    /* ── chart ── */
+    #chart-wrap {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 12px 16px;
+      width: 100%;
+      max-width: 800px;
+    }
+    #chart-title { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--sub); margin-bottom: 8px; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+
+<h1>Predator–Prey Simulation</h1>
+
+<div class="controls">
+  <div class="ctrl">
+    <label>🐇 Rabbits</label>
+    <input type="number" id="init-rabbits" value="30" min="1" max="500">
+  </div>
+  <div class="ctrl">
+    <label>🦊 Foxes</label>
+    <input type="number" id="init-foxes" value="8" min="1" max="200">
+  </div>
+  <div class="ctrl">
+    <label>Fox death / step</label>
+    <input type="number" id="fox-death" value="0.05" min="0" max="1" step="0.01">
+  </div>
+  <div class="ctrl">
+    <label>Speed</label>
+    <div class="speed-row">
+      <input type="range" id="speed" min="80" max="2000" value="600" step="80">
+      <span class="speed-val" id="speed-label">600 ms</span>
+    </div>
+  </div>
+  <div class="btns">
+    <button id="btn-start">▶ Start</button>
+    <button id="btn-stop">■ Stop</button>
+    <button id="btn-reset">↺ Reset</button>
+  </div>
+</div>
+
+<div class="main">
+  <div id="board"></div>
+
+  <div class="stats">
+    <div class="si s-step">
+      <span class="lbl">Step</span>
+      <span class="val" id="v-step">0</span>
+    </div>
+    <div class="si s-rabbit">
+      <span class="lbl">🐇 Rabbits</span>
+      <span class="val" id="v-rabbits">—</span>
+    </div>
+    <div class="si s-fox">
+      <span class="lbl">🦊 Foxes</span>
+      <span class="val" id="v-foxes">—</span>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+
+<div id="chart-wrap">
+  <div id="chart-title">Population history</div>
+  <canvas id="chart" height="180"></canvas>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
