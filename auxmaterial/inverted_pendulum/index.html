@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delayed Cart–Pendulum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Spline+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: lab bench — scene + traces on the left, a control rack on the right; stacks on phones */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d3dae2;
+  --rod:#2a4fd6; --ghost:#d98a14; --cart:#2c3a48; --ok:#1d8a5a; --warn:#b5600b; --bad:#c23a3a;
+  --trace-x:#2a4fd6; --trace-y:#7a52b8; --trace-m:#d98a14; --grid:#e3e8ee;
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;
+  --f-body:"Spline Sans",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161c; --panel:#1a2129; --ink:#e6ebf0; --muted:#93a0ad; --line:#2c3642;
+  --rod:#7d9bff; --ghost:#f0aa45; --cart:#c4ced8; --ok:#4cc38a; --warn:#f0a050; --bad:#ff7676;
+  --trace-x:#7d9bff; --trace-y:#c09bf0; --trace-m:#f0aa45; --grid:#232c36; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161c; --panel:#1a2129; --ink:#e6ebf0; --muted:#93a0ad; --line:#2c3642;
+  --rod:#7d9bff; --ghost:#f0aa45; --cart:#c4ced8; --ok:#4cc38a; --warn:#f0a050; --bad:#ff7676;
+  --trace-x:#7d9bff; --trace-y:#c09bf0; --trace-m:#f0aa45; --grid:#232c36; color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 40px;display:flex;flex-direction:column;gap:18px}
+h1{font-family:var(--f-display);font-weight:700;font-size:clamp(1.5rem,3vw,2.1rem);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;max-width:72ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.stage{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#scene{width:100%;height:340px;display:block}
+#trace{width:100%;height:200px;display:block;border-top:1px solid var(--line)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);padding:8px 14px;border-top:1px solid var(--line)}
+.sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.rack{padding:16px;display:flex;flex-direction:column;gap:16px}
+.status{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pill{font-family:var(--f-mono);font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.pill.ok{color:var(--ok)}.pill.osc{color:var(--warn)}.pill.bad{color:var(--bad)}
+.lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.readouts{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums}
+.readouts span{color:var(--muted);font-family:var(--f-body);font-size:12px;display:block}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctl .row{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px}
+.ctl output{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
+input[type=range]{width:100%;accent-color:var(--rod)}
+.tau input[type=range]{accent-color:var(--ghost)}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.scen{display:flex;flex-direction:column;gap:6px}
+.scen button{text-align:left;display:flex;flex-direction:column;gap:1px;padding:7px 10px}
+.scen button small{color:var(--muted);font-weight:400;font-size:12px}
+button{font:500 13px var(--f-body);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.on{border-color:var(--ghost);box-shadow:inset 0 0 0 1px var(--ghost)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--rod);outline-offset:2px}
+button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+select{font:13px var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:5px 6px}
+details summary{cursor:pointer;font-size:13.5px;font-weight:600}
+details .ctl{margin-top:10px}
+.model{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:14px 28px}
+.model h2{font-family:var(--f-display);font-size:1.05rem;margin:0 0 4px;font-weight:600}
+.model p{margin:6px 0;color:var(--muted);font-size:13.5px;max-width:64ch}
+.model p b{color:var(--ink);font-weight:600}
+.eq{overflow-x:auto;padding:4px 0;font-size:17px}
+.note{font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Balancing an inverted pendulum with delayed feedback</h1>
+    <p class="sub">A homogeneous rod on a cart, stabilised by delayed PD control. Past the critical delay τ<sub>c</sub> the upright position loses stability in a Hopf bifurcation and the cart starts to rock. For larger derivative gain K<sub>d</sub> the oscillation then breaks its left–right symmetry before the pendulum falls.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card stage">
+      <canvas id="scene" aria-label="Animated cart with inverted pendulum"></canvas>
+      <canvas id="trace" aria-label="Time traces of angle x and cart position y"></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--trace-x)"></i>angle x(t) [rad]</span>
+        <span><i class="sw" style="background:var(--trace-m)"></i>mean tilt x̄ over one Hopf period</span>
+        <span><i class="sw" style="background:var(--trace-y)"></i>cart position y(t) [m]</span>
+        <span><i class="sw" style="background:var(--ghost);opacity:.6"></i>scene: delayed state seen by the controller</span>
+      </div>
+    </div>
+
+    <div class="card rack">
+      <div class="status"><span class="lbl">State</span><span id="pill" class="pill ok">stable</span></div>
+      <div class="readouts">
+        <div><span>critical delay τ<sub>c</sub></span><b id="tcOut">–</b></div>
+        <div><span>Hopf period 2π/ω<sub>c</sub></span><b id="perOut">–</b></div>
+        <div><span>amplitude of x (last 3 s)</span><b id="ampOut">–</b></div>
+        <div><span>mean tilt x̄</span><b id="meanOut">–</b></div>
+        <div><span>cart speed ẏ</span><b id="vOut">–</b></div>
+        <div><span>time</span><b id="tOut">0.0 s</b></div>
+      </div>
+
+      <div class="scen">
+        <span class="lbl">Scenarios</span>
+        <button data-scen="0"><span>Hopf oscillation</span><small>K<sub>d</sub> = 7, τ = 1.04 τ<sub>c</sub>: symmetric limit cycle</small></button>
+        <button data-scen="1"><span>Symmetry breaking with cart feedback</span><small>K<sub>d</sub> = 13, τ = 1.06 τ<sub>c</sub>: tilt flips side, cart sweeps</small></button>
+        <button data-scen="2"><span>Symmetry breaking, pendulum only</span><small>K<sub>d</sub> = 13, k<sub>p</sub> = k<sub>d</sub> = 0, τ = 1.08 τ<sub>c</sub>: cart accelerates away</small></button>
+      </div>
+
+      <div class="ctl tau">
+        <div class="row"><label for="tau">Delay τ</label><output id="tauOut">–</output></div>
+        <input id="tau" type="range" min="0" max="0.25" step="0.0002">
+        <div class="btns" style="margin-top:4px">
+          <button data-rel="0.95">0.95 τ<sub>c</sub></button>
+          <button data-rel="1.01">1.01 τ<sub>c</sub></button>
+          <button data-rel="1.04">1.04 τ<sub>c</sub></button>
+          <button data-rel="1.08">1.08 τ<sub>c</sub></button>
+          <button data-rel="1.12">1.12 τ<sub>c</sub></button>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="kick" class="primary">Nudge</button>
+        <button id="pause">Pause</button>
+        <button id="reset">Reset</button>
+        <label class="note" for="speed" style="display:flex;align-items:center;gap:6px">speed
+          <select id="speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option></select>
+        </label>
+      </div>
+
+      <details id="gainsBox">
+        <summary>Feedback gains</summary>
+        <div class="ctl"><div class="row"><label for="Kp">K<sub>p</sub> on x [N/rad]</label><output id="KpOut"></output></div><input id="Kp" type="range" min="13" max="60" step="0.5"></div>
+        <div class="ctl"><div class="row"><label for="Kd">K<sub>d</sub> on ẋ [N·s/rad]</label><output id="KdOut"></output></div><input id="Kd" type="range" min="0" max="20" step="0.1"></div>
+        <div class="ctl"><div class="row"><label for="kp">k<sub>p</sub> on y [N/m]</label><output id="kpOut"></output></div><input id="kp" type="range" min="0" max="3" step="0.05"></div>
+        <div class="ctl"><div class="row"><label for="kd">k<sub>d</sub> on ẏ [N·s/m]</label><output id="kdOut"></output></div><input id="kd" type="range" min="0" max="5" step="0.05"></div>
+      </details>
+      <p class="note" style="margin:0">M = 1 kg, m = 0.3 kg, L = 1 m, g = 9.81 m/s². τ<sub>c</sub> is recomputed from the linearisation whenever the gains change.</p>
+    </div>
+  </div>
+
+  <section class="card model">
+    <div>
+      <h2>Equations of motion</h2>
+      <p>Rod of length L and mass m (centre of mass at l = L/2, moment of inertia mL²/12 about it), cart of mass M driven by a horizontal force F. x is the tilt from upright, y the cart position.</p>
+      <div class="eq"><math display="block"><mrow><mo stretchy="false">(</mo><mi>M</mi><mo>+</mo><mi>m</mi><mo stretchy="false">)</mo><mover accent="true"><mi>y</mi><mo>¨</mo></mover><mo>+</mo><mi>m</mi><mi>l</mi><mo stretchy="false">(</mo><mover accent="true"><mi>x</mi><mo>¨</mo></mover><mi>cos</mi><mo>&#x2061;</mo><mspace width="0.17em"></mspace><mi>x</mi><mo>−</mo><msup><mover accent="true"><mi>x</mi><mo>˙</mo></mover><mn>2</mn></msup><mi>sin</mi><mo>&#x2061;</mo><mspace width="0.17em"></mspace><mi>x</mi><mo stretchy="false">)</mo><mo>=</mo><mi>F</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo></mrow></math></div>
+      <div class="eq"><math display="block"><mrow><mfrac><mrow><mn>4</mn></mrow><mrow><mn>3</mn></mrow></mfrac><mi>l</mi><mover accent="true"><mi>x</mi><mo>¨</mo></mover><mo>+</mo><mover accent="true"><mi>y</mi><mo>¨</mo></mover><mi>cos</mi><mo>&#x2061;</mo><mspace width="0.17em"></mspace><mi>x</mi><mo>−</mo><mi>g</mi><mi>sin</mi><mo>&#x2061;</mo><mspace width="0.17em"></mspace><mi>x</mi><mo>=</mo><mn>0</mn><mo>,</mo><mspace width="1.5em"></mspace><mi>l</mi><mo>=</mo><mfrac><mrow><mi>L</mi></mrow><mrow><mn>2</mn></mrow></mfrac></mrow></math></div>
+      <h2 style="margin-top:14px">Delayed PD feedback</h2>
+      <p>All four states are measured τ seconds late. The cart gains are much smaller than the angle gains. For an inverted pendulum they carry the same sign as the angle gains: the cart briefly moves away from the origin to lean the rod back towards it.</p>
+      <div class="eq"><math display="block"><mrow><mi>F</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>K</mi><mi>p</mi></msub><mi>x</mi><mo stretchy="false">(</mo><mi>t</mi><mo>−</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>+</mo><msub><mi>K</mi><mi>d</mi></msub><mover accent="true"><mi>x</mi><mo>˙</mo></mover><mo stretchy="false">(</mo><mi>t</mi><mo>−</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>+</mo><msub><mi>k</mi><mi>p</mi></msub><mi>y</mi><mo stretchy="false">(</mo><mi>t</mi><mo>−</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>+</mo><msub><mi>k</mi><mi>d</mi></msub><mover accent="true"><mi>y</mi><mo>˙</mo></mover><mo stretchy="false">(</mo><mi>t</mi><mo>−</mo><mi>τ</mi><mo stretchy="false">)</mo></mrow></math></div>
+    </div>
+    <div>
+      <h2>Hopf bifurcation</h2>
+      <p>Linearising about x = y = 0 gives the characteristic equation</p>
+      <div class="eq"><math display="block"><mrow><msup><mi>λ</mi><mn>4</mn></msup><mo>−</mo><mi>a</mi><msup><mi>λ</mi><mn>2</mn></msup><mo>+</mo><mfrac><mrow><msup><mi>e</mi><mrow><mo>−</mo><mi>λ</mi><mi>τ</mi></mrow></msup></mrow><mrow><mi>D</mi></mrow></mfrac><mo stretchy="false">[</mo><mo stretchy="false">(</mo><mi>K</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo><mo>−</mo><mfrac><mrow><mn>4</mn></mrow><mrow><mn>3</mn></mrow></mfrac><mi>l</mi><mi>k</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo><msup><mi>λ</mi><mn>2</mn></msup><mo>+</mo><mi>g</mi><mi>k</mi><mo stretchy="false">(</mo><mi>λ</mi><mo stretchy="false">)</mo><mo stretchy="false">]</mo><mo>=</mo><mn>0</mn></mrow></math></div>
+      <p class="note">with K(λ) = K<sub>p</sub> + K<sub>d</sub>λ, k(λ) = k<sub>p</sub> + k<sub>d</sub>λ, D = l(4M+m)/3, a = (M+m)g/D.</p>
+      <p>A pair of roots crosses the imaginary axis at λ = ±iω<sub>c</sub> when τ = τ<sub>c</sub>. With K<sub>d</sub> = 7 the bifurcation is supercritical: the amplitude grows like √(τ − τ<sub>c</sub>) until, about 10 % above τ<sub>c</sub>, the pendulum falls.</p>
+      <h2 style="margin-top:14px">Symmetry breaking</h2>
+      <p>The equations are invariant under (x, y) ↦ (−x, −y), and the Hopf orbit inherits that symmetry: its mean tilt x̄ is zero. The fall corresponds to a connecting orbit. <b>For larger K<sub>d</sub> the orbit first loses its symmetry.</b> In simulations without cart feedback, the pendulum falls from the symmetric orbit for K<sub>d</sub> = 4. Symmetry breaking comes first at about 1.18 τ<sub>c</sub> for K<sub>d</sub> = 5.5, 1.13 τ<sub>c</sub> for K<sub>d</sub> = 7 and 1.03 τ<sub>c</sub> for K<sub>d</sub> = 13. In each case the fall follows only at 1.26–1.28 τ<sub>c</sub>. The pendulum then oscillates about a tilted mean x̄ ≠ 0. Averaging the cart equation over one period gives the balance</p>
+      <div class="eq"><math display="block"><mrow><msub><mi>K</mi><mi>p</mi></msub><mover accent="true"><mi>x</mi><mo>‾</mo></mover><mo>+</mo><msub><mi>k</mi><mi>p</mi></msub><mover accent="true"><mi>y</mi><mo>‾</mo></mover><mo>+</mo><msub><mi>k</mi><mi>d</mi></msub><mover accent="true"><mover accent="true"><mi>y</mi><mo>˙</mo></mover><mo>‾</mo></mover><mo>=</mo><mn>0</mn></mrow></math></div>
+      <p>Without cart feedback (k<sub>p</sub> = k<sub>d</sub> = 0) the leaning oscillation is a stable periodic orbit of the angle equation, and the cart accelerates steadily towards the lean. With the small cart gains the balance cannot hold for long. The cart runs off, its own feedback pushes the tilt over to the other side, and the cart runs back. You see a fast oscillation with a slowly flipping mean tilt, and large, slow cart sweeps.</p>
+    </div>
+  </section>
+</div>
+
+<script src="model.js"></script>
+<script>
+/* ===================== user interface and drawing ===================== */
+(function(){
+var SCEN=[
+  {K:[20,7,0.3,1.5], rel:1.04, x0:0.05},
+  {K:[20,13,0.3,1.5], rel:1.06, x0:0.15},
+  {K:[20,13,0,0], rel:1.08, x0:0.15}
+];
+var tcv=new Float64Array(2), tc=NaN, wc=NaN, tcStatus=1;
+var fallen=false, paused=false, speed=1, scenIdx=0;
+var tr=[], lastSample=0, TWIN=12, SDT=0.01;
+var zd=new Float64Array(4);
+
+function $(id){return document.getElementById(id);}
+var tauEl=$('tau');
+function fmtTau(){$('tauOut').textContent=tau.toFixed(4)+' s'+(isFinite(tc)?'  ('+(tau/tc).toFixed(3)+' τc)':'');}
+function setTau(v){tau=Math.max(0,Math.min(0.25,v));tauEl.value=tau;fmtTau();}
+tauEl.addEventListener('input',function(){tau=+tauEl.value;fmtTau();markScen(-1);});
+document.querySelectorAll('[data-rel]').forEach(function(b){b.addEventListener('click',function(){
+  if(!isFinite(tc))return;setTau(tc*+b.dataset.rel);markScen(-1);if(fallen)restart(0.05);});});
+$('kick').addEventListener('click',function(){if(fallen)restart(0.05);z[1]+=0.4;});
+$('pause').addEventListener('click',function(e){paused=!paused;e.currentTarget.textContent=paused?'Resume':'Pause';});
+$('reset').addEventListener('click',function(){restart(0.1);});
+$('speed').addEventListener('change',function(e){speed=+e.target.value;});
+var gainIds=['Kp','Kd','kp','kd'];
+function syncGains(){
+  gainIds.forEach(function(id,i){$(id).value=gain[i];$(id+'Out').textContent=gain[i].toFixed(2);});
+  tcStatus=critical_delay(tcv);
+  if(tcStatus===1){tc=tcv[0];wc=tcv[1];}else{tc=NaN;wc=NaN;}
+  $('tcOut').textContent=tcStatus===-1?'unstable at τ=0':isFinite(tc)?tc.toFixed(4)+' s':'none';
+  $('perOut').textContent=isFinite(wc)?(2*Math.PI/wc).toFixed(3)+' s':'–';fmtTau();
+}
+gainIds.forEach(function(id,i){$(id).addEventListener('input',function(e){gain[i]=+e.target.value;syncGains();markScen(-1);});});
+function markScen(k){scenIdx=k;document.querySelectorAll('[data-scen]').forEach(function(b){b.classList.toggle('on',+b.dataset.scen===k);});}
+function applyScen(k){var s=SCEN[k];for(var i=0;i<4;i++)gain[i]=s.K[i];syncGains();setTau(tc*s.rel);markScen(k);restart(s.x0);}
+document.querySelectorAll('[data-scen]').forEach(function(b){b.addEventListener('click',function(){applyScen(+b.dataset.scen);});});
+
+function restart(x0){sim_reset(x0);z[2]=0.01;fallen=false;tr.length=0;lastSample=0;cam=0;}
+
+/* ---------- drawing ---------- */
+var sc=$('scene'),tcan=$('trace'),cx=sc.getContext('2d'),tx=tcan.getContext('2d');
+var col={};
+function readCols(){var cs=getComputedStyle(document.documentElement);
+  ['panel','ink','muted','line','rod','ghost','cart','trace-x','trace-y','trace-m','grid','bad'].forEach(function(k){col[k]=cs.getPropertyValue('--'+k).trim();});}
+function fit(c){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;
+  if(c.width!==Math.round(r.width*d)||c.height!==Math.round(r.height*d)){c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);}
+  return {w:r.width,h:r.height,d:d};}
+var cam=0;
+function roundRect(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath();}
+function drawScene(){
+  var f=fit(sc),w=f.w,h=f.h;cx.setTransform(f.d,0,0,f.d,0,0);cx.fillStyle=col.panel;cx.fillRect(0,0,w,h);
+  var s=Math.min(w/5.2,h/1.75), gy=h*0.80, y=z[2];
+  if(y-cam>2.0)cam=y-2.0; if(y-cam<-2.0)cam=y+2.0;
+  function X(v){return w/2+(v-cam)*s;}
+  cx.strokeStyle=col.line;cx.lineWidth=2;cx.beginPath();cx.moveTo(0,gy);cx.lineTo(w,gy);cx.stroke();
+  cx.fillStyle=col.muted;cx.font='11px "JetBrains Mono",monospace';cx.textAlign='center';
+  var m0=Math.ceil((cam-w/2/s)*2)/2,m1=cam+w/2/s;
+  for(var v=m0;v<=m1;v+=0.5){var px_=X(v),major=Math.abs(v-Math.round(v))<1e-9;
+    cx.strokeStyle=col.line;cx.lineWidth=1;cx.beginPath();cx.moveTo(px_,gy);cx.lineTo(px_,gy+(major?9:5));cx.stroke();
+    if(major)cx.fillText(Math.round(v)+' m',px_,gy+22);}
+  cx.strokeStyle=col.grid;cx.setLineDash([3,4]);cx.beginPath();cx.moveTo(X(0),gy);cx.lineTo(X(0),gy-L*s*1.05);cx.stroke();cx.setLineDash([]);
+  var cw=0.42*s,ch=0.17*s,wr=0.045*s;
+  past_state(tau,zd);
+  var gpx=X(zd[2]),gpy=gy-ch-wr*2;
+  cx.globalAlpha=0.55;cx.strokeStyle=col.ghost;cx.lineWidth=2;cx.setLineDash([6,5]);
+  cx.strokeRect(gpx-cw/2,gpy,cw,ch);
+  cx.beginPath();cx.moveTo(gpx,gpy);cx.lineTo(gpx+Math.sin(zd[0])*L*s,gpy-Math.cos(zd[0])*L*s);cx.stroke();
+  cx.setLineDash([]);cx.globalAlpha=1;
+  var px=X(y),py=gy-ch-wr*2;
+  cx.fillStyle=col.cart;roundRect(px-cw/2,py,cw,ch,5);cx.fill();
+  cx.fillStyle=col.panel;cx.strokeStyle=col.cart;cx.lineWidth=2;
+  [-1,1].forEach(function(sg){cx.beginPath();cx.arc(px+sg*cw*0.3,gy-wr,wr,0,7);cx.fill();cx.stroke();});
+  var Fl=Math.max(-2.2,Math.min(2.2,force*0.06))*s*0.5;
+  if(Math.abs(Fl)>2){var ay=py+ch/2,ax0=px+Math.sign(Fl)*cw/2,ax1=ax0+Fl;
+    cx.strokeStyle=col.bad;cx.fillStyle=col.bad;cx.lineWidth=2.5;cx.beginPath();cx.moveTo(ax0,ay);cx.lineTo(ax1,ay);cx.stroke();
+    cx.beginPath();cx.moveTo(ax1,ay);cx.lineTo(ax1-Math.sign(Fl)*8,ay-5);cx.lineTo(ax1-Math.sign(Fl)*8,ay+5);cx.fill();
+    cx.font='11px "JetBrains Mono",monospace';cx.textAlign=Fl>0?'left':'right';cx.fillText('F',ax1+Math.sign(Fl)*4,ay+4);}
+  var ex=px+Math.sin(z[0])*L*s,ey=py-Math.cos(z[0])*L*s;
+  cx.strokeStyle=col.rod;cx.lineCap='round';cx.lineWidth=Math.max(7,0.05*s);cx.beginPath();cx.moveTo(px,py);cx.lineTo(ex,ey);cx.stroke();cx.lineCap='butt';
+  cx.fillStyle=col.panel;cx.beginPath();cx.arc(px,py,4,0,7);cx.fill();
+  cx.fillStyle=col.muted;cx.textAlign='left';cx.font='12px "JetBrains Mono",monospace';
+  cx.fillText('x = '+(z[0]*180/Math.PI).toFixed(1)+'°   y = '+z[2].toFixed(2)+' m   F = '+force.toFixed(1)+' N',12,20);
+  if(fallen){cx.fillStyle=col.bad;cx.font='600 15px "Spline Sans",sans-serif';cx.fillText('Fallen over. Press Reset or lower τ.',12,42);}
+}
+function niceLim(v){var c=[0.02,0.05,0.1,0.2,0.3,0.5,1,1.5,2,3,5,10,20,50,100];for(var i=0;i<c.length;i++)if(v<=c[i])return c[i];return Math.ceil(v/100)*100;}
+function fmt(v){return Math.abs(v)<1e-9?'0':(Math.abs(v)<0.1?v.toFixed(2):Math.abs(v)<10?v.toFixed(1):v.toFixed(0));}
+function drawTrace(){
+  var f=fit(tcan),w=f.w,h=f.h;tx.setTransform(f.d,0,0,f.d,0,0);tx.fillStyle=col.panel;tx.fillRect(0,0,w,h);
+  var padL=44,padR=10,hh=(h-30)/2;
+  var lanes=[{k:1,lab:'x',c:col['trace-x'],top:8,hh:hh,mean:true},{k:2,lab:'y',c:col['trace-y'],top:8+hh+16,hh:hh-16}];
+  var t0=t-TWIN;function TX(tt){return padL+(tt-t0)/TWIN*(w-padL-padR);}
+  lanes.forEach(function(Ln){
+    var mx=0,lo=1e9,hi=-1e9;tr.forEach(function(p){lo=Math.min(lo,p[Ln.k]);hi=Math.max(hi,p[Ln.k]);});
+    var ctr=Ln.k===2&&tr.length?0.5*(lo+hi):0;
+    if(Ln.k===2&&Math.abs(ctr)<2)ctr=0; /* centre the y lane only when the cart has run away */
+    tr.forEach(function(p){mx=Math.max(mx,Math.abs(p[Ln.k]-ctr));});
+    var lim=niceLim(mx||0.05),mid=Ln.top+Ln.hh/2;function Y(v){return mid-(v-ctr)/lim*Ln.hh/2;}
+    tx.strokeStyle=col.grid;tx.lineWidth=1;
+    [ctr-lim,ctr,ctr+lim].forEach(function(v){tx.beginPath();tx.moveTo(padL,Y(v));tx.lineTo(w-padR,Y(v));tx.stroke();});
+    tx.fillStyle=col.muted;tx.font='10.5px "JetBrains Mono",monospace';tx.textAlign='right';
+    [ctr-lim,ctr,ctr+lim].forEach(function(v){tx.fillText(fmt(v),padL-6,Y(v)+3.5);});
+    tx.textAlign='left';tx.fillText(Ln.lab,padL+4,Ln.top+10);
+    tx.strokeStyle=Ln.c;tx.lineWidth=1.4;tx.beginPath();
+    tr.forEach(function(p,i){var X_=TX(p[0]),Y_=Y(p[Ln.k]);if(i)tx.lineTo(X_,Y_);else tx.moveTo(X_,Y_);});tx.stroke();
+    if(Ln.mean){tx.strokeStyle=col['trace-m'];tx.lineWidth=2.2;tx.beginPath();var st=false;
+      tr.forEach(function(p){if(p[3]===null)return;var X_=TX(p[0]),Y_=Y(p[3]);if(st)tx.lineTo(X_,Y_);else{tx.moveTo(X_,Y_);st=true;}});tx.stroke();}
+    if(tr.length){var p=tr[tr.length-1];tx.fillStyle=Ln.c;tx.beginPath();tx.arc(TX(p[0]),Y(p[Ln.k]),3,0,7);tx.fill();}
+  });
+  tx.fillStyle=col.muted;tx.textAlign='center';tx.font='10.5px "JetBrains Mono",monospace';
+  for(var s_=Math.ceil(t0/2)*2;s_<=t;s_+=2){if(s_<0)continue;tx.fillText(s_+' s',TX(s_),h-6);}
+}
+/* running mean of x over one Hopf period, from the 10 ms samples */
+function runningMean(){
+  var P=isFinite(wc)?2*Math.PI/wc:1.0,n=Math.max(1,Math.round(P/SDT));
+  if(tr.length<n)return null;var s=0;for(var i=tr.length-n;i<tr.length;i++)s+=tr[i][1];return s/n;}
+
+function updateStatus(){
+  var amp=0;tr.forEach(function(p){if(p[0]>t-3)amp=Math.max(amp,Math.abs(p[1]));});
+  var mbar=tr.length?tr[tr.length-1][3]:null;
+  $('ampOut').textContent=(amp*180/Math.PI).toFixed(2)+'°';
+  $('meanOut').textContent=mbar===null?'–':(mbar*180/Math.PI).toFixed(2)+'°';
+  $('vOut').textContent=z[3].toFixed(2)+' m/s';
+  $('tOut').textContent=t.toFixed(1)+' s';
+  var pill=$('pill');
+  if(fallen){pill.className='pill bad';pill.textContent='fallen';}
+  else if(tcStatus===-1){pill.className='pill bad';pill.textContent='gains unstable';}
+  else if(isFinite(tc)&&tau>tc){
+    var asym=mbar!==null&&Math.abs(mbar)>0.03&&amp>0.05;
+    pill.className='pill osc';pill.textContent=asym?'oscillating · tilted (x̄ ≠ 0)':'τ > τc · oscillating';}
+  else{pill.className='pill ok';pill.textContent='τ < τc · stable';}
+}
+
+var last=performance.now(),frame=0;
+function loop(now){
+  var fdt=Math.min(0.05,(now-last)/1000);last=now;
+  if(!paused&&!fallen){var n=Math.round(fdt*speed/DT);
+    for(var i=0;i<n&&!fallen;i++){if(sim_step())fallen=true;
+      if(t-lastSample>=SDT){var e=[t,z[0],z[2],null];tr.push(e);e[3]=runningMean();lastSample=t;}}
+    while(tr.length&&tr[0][0]<t-TWIN)tr.shift();}
+  if(frame++%30===0)readCols();
+  drawScene();drawTrace();if(frame%6===0)updateStatus();
+  requestAnimationFrame(loop);
+}
+readCols();applyScen(0);
+if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches){speed=0.5;$('speed').value='0.5';}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
