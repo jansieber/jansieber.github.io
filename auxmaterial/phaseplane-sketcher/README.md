@@ -83,13 +83,23 @@ The *Consistency* panel lists:
   * **Download** saves into the phone's or tablet's *Downloads* folder; *Open…* opens the system file picker, where Downloads (and Google Drive etc.) can be browsed to load it again.
   * **Share…** sends the file to another app (Google Drive, Files, e-mail, …). It is only shown when the browser supports sharing files.
 * **Library…:** keeps named drawings inside the browser (localStorage) with no files involved, and lists them for opening or deleting. Handy on iPad, but tied to that browser on that device.
+  * **Export library…** saves all stored drawings as one backup file (`phase-library-DATE.json`).
+  * **Import…** adds drawings from such a backup, or from one or more `.phase.json` files. Identical entries are skipped, and name clashes get a suffix such as `name (2)`.
+  * Use export and import to move a library between browsers, devices, or copies of the tool loaded from different places.
+  * **Which copies share a library:** browser storage belongs to an *origin* (protocol + host + port), not to a folder or file. All tabs showing the tool from the same website share one library; copies on different websites each have their own. Copies opened from disk share one library in Chrome, while Firefox may keep local files separate. Private windows get a temporary library that is deleted when the window closes. Settings (grid, snap, magnet, refuse crossings, smoothing) are shared per origin in the same way.
 * **Drag and drop:** a `.phase.json` file can be dropped onto the drawing area to open it.
-* **Autosave:** the drawing is also autosaved in the browser (localStorage) and restored when the page is reopened.
+* **Autosave:** each browser tab autosaves its drawing in its own slot, so two tabs never overwrite each other's restore point.
+  * Reloading a tab restores that tab's drawing.
+  * A newly opened tab starts from the most recently autosaved drawing of any tab, then keeps its own slot.
+  * A duplicated tab is detected and gets its own slot.
+  * The 12 most recent slots are kept.
 * **Export menu:**
+  * **PDF file, cropped to drawing (for LaTeX):** a vector PDF whose page is exactly the drawing plus a small margin. It is made directly, without the print dialog, and can go straight into `\includegraphics`. 50 px of drawing = 1 cm, as in TikZ. Fonts are the standard PDF Times and Symbol, so Greek letters and the label symbols work.
+  * **Print / save as PDF – page = drawing…:** the browser's print dialog with the page size set to the drawing. This works in Chrome, Edge and Firefox; other browsers may ignore the page size.
+  * **Print / save as PDF – full page…:** the drawing scaled onto a normal paper page.
   * SVG
   * PNG (3× resolution)
   * TikZ code (shown in a box to copy, or saved as `.tex`)
-  * Print / save as PDF (prints just the drawing)
 * **TikZ:** needs `\usepackage{tikz}` and `\usetikzlibrary{arrows.meta,decorations.markings}`. 50 px of drawing = 1 cm; change the `x`/`y` options of the `tikzpicture` to rescale.
 
 ## Files in this folder

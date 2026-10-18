@@ -120,7 +120,9 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
         <button data-exp="png">PNG image (3×)</button>
         <button data-exp="tikz">TikZ code…</button>
         <button data-exp="tex">TikZ as .tex file…</button>
-        <button data-exp="print">Print / save as PDF…</button>
+        <button data-exp="pdf">PDF file, cropped to drawing (for LaTeX)</button>
+        <button data-exp="printcrop">Print / save as PDF – page = drawing…</button>
+        <button data-exp="print">Print / save as PDF – full page…</button>
       </div>
     </div>
     <button id="bHelp" title="Help (?)">?</button>
@@ -165,7 +167,8 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
   <p class="hint">Drawings kept here survive reloads but live only in this browser on this device. Use Save for real files.</p>
   <div class="row"><span>Name</span><input type="text" id="libName"><button id="libStore">Store current drawing</button></div>
   <ul id="libList"></ul>
-  <div class="btns"><button data-close>Close</button></div>
+  <div class="btns"><button id="libExport" title="Save all stored drawings as one backup file">Export library…</button><button id="libImport" title="Add drawings from a library backup or from .phase.json files">Import…</button><button data-close>Close</button></div>
+  <input type="file" id="libInput" multiple hidden>
 </div></div>
 
 <div class="modal" id="helpModal" hidden><div class="box">
@@ -612,12 +615,17 @@ function renderElement(el,exp){
     else if(el.kind==='sn'){const r=R_EQ+0.5;const nodeSide=el.angle+180,fillMid=el.trans==='stable'?nodeSide:el.angle;
       const a=vadd(c,vmul(eqDir(fillMid-90),r)),b=vadd(c,vmul(eqDir(fillMid+90),r));
       s+=`<circle cx="${f2(c.x)}" cy="${f2(c.y)}" r="${r}" fill="#fff" stroke="${INK}" stroke-width="1.3"/>`;
-      s+=`<path d="M${P(a)}A${r} ${r} 0 0 0 ${P(b)}Z" fill="${INK}"/>`;}
+      s+=`<path d="${halfDiscD(c,r,fillMid)}" fill="${INK}"/>`;}
     s+='</g>';}
   else if(el.type==='label'){s+=`<g${gid}>`;
     if(!exp){const b=labelBox(el);s+=`<rect x="${f2(b.x0)}" y="${f2(b.y0)}" width="${f2(b.x1-b.x0)}" height="${f2(b.y1-b.y0)}" fill="${sel?SELC:'transparent'}" fill-opacity="${sel?.15:0}"/>`;}
     s+=labelSVG(el)+'</g>';}
   return s;}
+function halfDiscD(c,r,mid){/* half disc centred on direction mid (deg, ccw on screen), cubic arcs */
+  const k=0.5523*r,u=a=>vadd(c,vmul(eqDir(a),r)),t=a=>({x:-Math.sin(a*D2R),y:-Math.cos(a*D2R)});
+  let d=`M${P(u(mid-90))}`;for(const a of [mid-90,mid]){const p0=u(a),p3=u(a+90);
+    d+=`C${P(vadd(p0,vmul(t(a),k)))} ${P(vsub(p3,vmul(t(a+90),k)))} ${P(p3)}`;}
+  return d+'Z';}
 function boundaryMarks(el){const fl=flatten(el),out=[];if(fl.total<1)return out;
   const sp=Math.max(10,el.spacing||36),n=Math.max(1,Math.round(fl.total/sp));
   for(let i=0;i<n;i++){const fr=el.closed?(i+0.5)/n:(n===1?0.5:(i+0.5)/n);const a=atArc(fl,fr),nn=crossDirAt(el,a.tan);
@@ -730,7 +738,28 @@ function commit(before,label,opts={}){
 function resetKeys(){st.valid=validate();st.hardKeys=new Set(st.valid.hard.map(h=>h.key));}
 function undo(){if(!st.undo.length)return;st.redo.push(snapshot());doc=JSON.parse(st.undo.pop());resetKeys();autosave();st.panelDirty=true;setMsg('Undo');refresh();}
 function redo(){if(!st.redo.length)return;st.undo.push(snapshot());doc=JSON.parse(st.redo.pop());resetKeys();autosave();st.panelDirty=true;setMsg('Redo');refresh();}
-function autosave(){try{localStorage.setItem('phaseplane-autosave',snapshot());}catch(e){}}
+/* Autosave: one slot per browser tab (tab id kept in sessionStorage, so a reload restores the same tab's
+   drawing). A brand-new tab starts from the most recently saved slot of any tab, then writes its own slot.
+   A duplicated tab inherits the id; a BroadcastChannel query detects that and gives it a fresh id. */
+const AUTOKEY='phaseplane-autosave:',INST=Math.random().toString(36).slice(2,10);
+let TAB=null;try{TAB=sessionStorage.getItem('phaseplane-tab');}catch(e){}
+const freshTab=!TAB;
+function newTabId(){TAB=Math.random().toString(36).slice(2,10);try{sessionStorage.setItem('phaseplane-tab',TAB);}catch(e){}}
+if(!TAB)newTabId();
+const BC=('BroadcastChannel' in window)?new BroadcastChannel('phaseplane-tabs'):null;
+if(BC){BC.onmessage=e=>{const m=e.data||{};
+    if(m.q&&m.q===TAB&&m.from!==INST)BC.postMessage({taken:TAB,to:m.from});
+    if(m.taken&&m.to===INST&&m.taken===TAB){newTabId();autosave();}};
+  try{BC.postMessage({q:TAB,from:INST});}catch(e){}}
+function autosaveSlots(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);
+    if(k&&k.startsWith(AUTOKEY)){try{const v=JSON.parse(localStorage.getItem(k));if(v&&v.doc)out.push({k,date:v.date||0,doc:v.doc});}catch(e){}}}}catch(e){}
+  return out.sort((a,b)=>b.date-a.date);}
+function autosave(){try{localStorage.setItem(AUTOKEY+TAB,JSON.stringify({date:Date.now(),doc:snapshot()}));
+    for(const x of autosaveSlots().slice(12))localStorage.removeItem(x.k);}catch(e){}}
+function restoreAutosave(){const slots=autosaveSlots();let src=freshTab?null:slots.find(x=>x.k===AUTOKEY+TAB);
+  if(!src&&slots.length)src=slots[0];let txt=src&&src.doc;
+  if(!txt){try{txt=localStorage.getItem('phaseplane-autosave');}catch(e){}}
+  if(!txt)return;try{const o=JSON.parse(txt);if(o&&Array.isArray(o.elements))doc=Object.assign(newDoc(),o);}catch(e){}}
 
 /* =====================================================================
    Tools
@@ -1122,7 +1151,7 @@ const SHARE_HINT=IOS?'On iPad/iPhone, web pages cannot open a folder dialog. Tap
   :'On Android, web pages cannot open a folder dialog. <b>Download</b> saves the file into the <b>Downloads</b> folder, where <b>Open…</b> can find it again. <b>Share…</b> sends it to another app instead, e.g. Google Drive, Files or e-mail.';
 let pendingShare=null;
 function shareFile(){const {name,blob}=pendingShare;return new File([blob],name,{type:blob.type||'application/octet-stream'});}
-function offerShare(name,blob){pendingShare={name,blob};$('shareName').textContent=name;$('shareHint').innerHTML=SHARE_HINT;
+function offerShare(name,blob){closeModals();pendingShare={name,blob};$('shareName').textContent=name;$('shareHint').innerHTML=SHARE_HINT;
   let ok=false;try{ok=!!(navigator.canShare&&navigator.canShare({files:[shareFile()]}));}catch(e){}
   $('shareBtn').hidden=!ok;openModal('shareModal');}
 async function writeTarget(tg,name,blob){if(tg==='download'){if(MOBILE){offerShare(name,blob);return 'the share sheet';}download(name,blob);return 'your Downloads folder';}
@@ -1153,6 +1182,26 @@ $('libStore').onclick=()=>{const n=$('libName').value.trim()||'untitled';const L
 $('libList').addEventListener('click',e=>{const o=e.target.dataset.lopen,d=e.target.dataset.ldel;const L=libGet();
   if(o!=null&&L[o]){try{loadDoc(JSON.parse(L[o].doc));fileHandle=null;fileName=o+'.phase.json';updateTitle();closeModals();setMsg('Opened “'+o+'” from the library');}catch(err){setMsg('Could not open: '+err.message,true);}}
   if(d!=null&&confirm('Delete “'+d+'” from this browser?')){delete L[d];try{localStorage.setItem(LIBKEY,JSON.stringify(L));}catch(err){}renderLib();}});
+$('libExport').onclick=async()=>{const L=libGet();if(!Object.keys(L).length){setMsg('The library is empty',true);return;}
+  const name='phase-library-'+new Date().toISOString().slice(0,10)+'.json';
+  try{const tg=await pickTarget(name,'Phase portrait library','application/json','.json');if(!tg)return;
+    const blob=new Blob([JSON.stringify({format:'phaseplane-library',version:1,exported:new Date().toISOString(),items:L},null,1)],{type:'application/json'});
+    const where=await writeTarget(tg,name,blob);if(where!=='the share sheet')setMsg('Library exported to '+where);}
+  catch(e){setMsg('Export failed: '+e.message,true);}};
+$('libImport').onclick=()=>$('libInput').click();
+$('libInput').addEventListener('change',async e=>{const L=libGet();let added=0,same=0,bad=0;
+  for(const f of [...e.target.files]){let o;try{o=JSON.parse(await f.text());}catch(err){bad++;continue;}
+    let items={};
+    if(o&&o.format==='phaseplane-library'&&o.items&&typeof o.items==='object')items=o.items;
+    else if(o&&Array.isArray(o.elements))items={[f.name.replace(/\.phase\.json$|\.json$/i,'')||'untitled']:{date:f.lastModified||Date.now(),doc:JSON.stringify(o)}};
+    else{bad++;continue;}
+    for(const [n,v] of Object.entries(items)){
+      try{if(!v||typeof v.doc!=='string'||!Array.isArray(JSON.parse(v.doc).elements)){bad++;continue;}}catch(err){bad++;continue;}
+      let name=n;if(L[name]){if(L[name].doc===v.doc){same++;continue;}let i=2;while(L[`${n} (${i})`])i++;name=`${n} (${i})`;}
+      L[name]={date:v.date||Date.now(),doc:v.doc};added++;}}
+  e.target.value='';
+  try{localStorage.setItem(LIBKEY,JSON.stringify(L));}catch(err){setMsg('Browser storage is full or unavailable',true);return;}
+  renderLib();setMsg(`Imported ${added} drawing${added===1?'':'s'}`+(same?`, ${same} already present`:'')+(bad?`, ${bad} unreadable`:''),!!bad&&!added);});
 /* drag a .phase.json file onto the drawing to open it */
 $('stage').addEventListener('dragover',e=>{e.preventDefault();});
 $('stage').addEventListener('drop',async e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(!f)return;
@@ -1162,10 +1211,10 @@ function pngBlob(scale){return new Promise(res=>{const {w,h,svg:sv}=exportSVG();
     g.drawImage(img,0,0,c.width,c.height);c.toBlob(res,'image/png');};
   img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(sv);});}
 async function exportTo(kind){
-  const T={svg:['.svg','image/svg+xml','SVG image'],png:['.png','image/png','PNG image'],tex:['.tex','text/plain','LaTeX / TikZ']}[kind];
+  const T={pdf:['.pdf','application/pdf','PDF (cropped)'],svg:['.svg','image/svg+xml','SVG image'],png:['.png','image/png','PNG image'],tex:['.tex','text/plain','LaTeX / TikZ']}[kind];
   const name=baseName()+T[0];
   try{const tg=await pickTarget(name,T[2],T[1],T[0]);if(!tg)return;
-    const blob=kind==='svg'?new Blob([exportSVG().svg],{type:T[1]}):kind==='tex'?new Blob([tikz()],{type:T[1]}):await pngBlob(3);
+    const blob=kind==='pdf'?makePDF():kind==='svg'?new Blob([exportSVG().svg],{type:T[1]}):kind==='tex'?new Blob([tikz()],{type:T[1]}):await pngBlob(3);
     const where=await writeTarget(tg,name,blob);if(where!=='the share sheet')setMsg('Exported to '+where);}
   catch(e){setMsg('Export failed: '+e.message,true);}}
 function loadDoc(obj){if(!obj||!Array.isArray(obj.elements))throw new Error('not a phase-portrait file');
@@ -1177,12 +1226,70 @@ function exportSVG(){const inner=renderScene(true);const tmp=document.createElem
   tmp.style.cssText='position:absolute;left:-9999px;top:0;width:10px;height:10px';tmp.innerHTML=`<g>${inner}</g>`;document.body.appendChild(tmp);
   let b;try{b=tmp.firstChild.getBBox();}catch(e){b={x:0,y:0,width:100,height:100};}tmp.remove();
   const m=16,x=Math.floor(b.x-m),y=Math.floor(b.y-m),w=Math.ceil(b.width+2*m),h=Math.ceil(b.height+2*m);
-  return {w,h,svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}">\n<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>\n${inner}\n</svg>\n`};}
+  return {x,y,w,h,svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}">\n<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>\n${inner}\n</svg>\n`};}
 function exportPNG(scale=3){const {w,h,svg:s}=exportSVG();const img=new Image();
   img.onload=()=>{const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
     g.drawImage(img,0,0,c.width,c.height);c.toBlob(bl=>download('phase-portrait.png',bl),'image/png');};
   img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);}
-function printPDF(){const {svg:s}=exportSVG();$('print').innerHTML=s;setTimeout(()=>window.print(),50);}
+function printPDF(crop){const e=exportSVG();$('print').innerHTML=e.svg;let st_=$('printPageStyle');
+  if(!st_){st_=document.createElement('style');st_.id='printPageStyle';document.head.appendChild(st_);}
+  st_.textContent=crop?`@page{size:${e.w}px ${e.h}px;margin:0}@media print{html,body{margin:0;padding:0;height:auto}#print svg{width:${e.w}px!important;height:${e.h}px!important;max-height:none!important;display:block}}`:'';
+  setTimeout(()=>window.print(),50);}
+/* ---------- direct vector PDF writer (parses our own export SVG: path M/L/C/Z, circle, rect, text/tspan) ---------- */
+const SYMBOLMAP={'α':'a','β':'b','γ':'g','δ':'d','ε':'e','ζ':'z','η':'h','θ':'q','ϑ':'J','ι':'i','κ':'k','λ':'l','μ':'m','ν':'n','ξ':'x','π':'p',
+  'ρ':'r','σ':'s','τ':'t','ϕ':'f','φ':'j','χ':'c','ψ':'y','ω':'w','Γ':'G','Δ':'D','Θ':'Q','Λ':'L','Ξ':'X','Π':'P','Σ':'S','Φ':'F','Ψ':'Y','Ω':'W',
+  '∞':'\xA5','±':'\xB1','→':'\xAE','·':'\xD7','′':'\xA2','≤':'\xA3','≥':'\xB3','≠':'\xB9','∈':'\xCE','∂':'\xB6'};
+function pdfStr(t){let o='';for(const ch of t){const c=ch.charCodeAt(0);
+    if(ch==='('||ch===')'||ch==='\\')o+='\\'+ch;else if(c>=32&&c<127)o+=ch;else if(c>=160&&c<256)o+='\\'+c.toString(8).padStart(3,'0');else o+='?';}
+  return o;}
+function hexRGB(h){if(!h||h==='none'||h==='transparent')return null;if(h==='#fff'||h==='white')return [1,1,1];
+  let m=h.replace('#','');if(m.length===3)m=m.split('').map(c=>c+c).join('');const n=parseInt(m,16);return [(n>>16&255)/255,(n>>8&255)/255,(n&255)/255];}
+function makePDF(){const e=exportSVG();const S=28.3465/50;/* 50 px = 1 cm, same as TikZ */
+  const svgDoc=new DOMParser().parseFromString(e.svg,'image/svg+xml');const meas=document.createElement('canvas').getContext('2d');
+  const N=v=>(+v).toFixed(3).replace(/\.?0+$/,'')||'0';let c='';
+  c+=`${N(S)} 0 0 ${N(-S)} ${N(-e.x*S)} ${N((e.y+e.h)*S)} cm\n`;
+  const style=(el,canFill)=>{const f=canFill?hexRGB(el.getAttribute('fill')||'#000'):null,st_=hexRGB(el.getAttribute('stroke'));
+    let o='';if(f)o+=`${f.map(N).join(' ')} rg\n`;if(st_){o+=`${st_.map(N).join(' ')} RG ${N(el.getAttribute('stroke-width')||1)} w `;
+      o+=(el.getAttribute('stroke-linecap')==='round'?'1':'0')+' J '+(el.getAttribute('stroke-linejoin')==='round'?'1':'0')+' j ';
+      const da=el.getAttribute('stroke-dasharray');o+=(da?`[${da.trim().split(/[\s,]+/).map(N).join(' ')}] 0 d`:'[] 0 d')+'\n';}
+    return {o,op:f&&st_?'B':f?'f':st_?'S':'n'};};
+  const circleD=(cx,cy,r)=>{const k=0.5523*r;return `${N(cx+r)} ${N(cy)} m ${N(cx+r)} ${N(cy+k)} ${N(cx+k)} ${N(cy+r)} ${N(cx)} ${N(cy+r)} c ${N(cx-k)} ${N(cy+r)} ${N(cx-r)} ${N(cy+k)} ${N(cx-r)} ${N(cy)} c ${N(cx-r)} ${N(cy-k)} ${N(cx-k)} ${N(cy-r)} ${N(cx)} ${N(cy-r)} c ${N(cx+k)} ${N(cy-r)} ${N(cx+r)} ${N(cy-k)} ${N(cx+r)} ${N(cy)} c h\n`;};
+  for(const el of svgDoc.documentElement.querySelectorAll('path,circle,rect,text')){const tag=el.tagName;
+    if(tag==='path'){const tok=(el.getAttribute('d')||'').match(/[MLCZz]|-?[\d.]+(?:e[-+]?\d+)?/g)||[];let i=0,cmd='',pd='';
+      while(i<tok.length){const t=tok[i];if(/[MLCZz]/.test(t)){cmd=t;i++;if(t==='Z'||t==='z')pd+='h\n';continue;}
+        if(cmd==='M'){pd+=`${N(tok[i])} ${N(tok[i+1])} m\n`;i+=2;cmd='L';}
+        else if(cmd==='L'){pd+=`${N(tok[i])} ${N(tok[i+1])} l\n`;i+=2;}
+        else if(cmd==='C'){pd+=`${tok.slice(i,i+6).map(N).join(' ')} c\n`;i+=6;}else i++;}
+      const s_=style(el,true);if(s_.op!=='n')c+='q '+s_.o+pd+s_.op+' Q\n';}
+    else if(tag==='circle'){const s_=style(el,true);if(s_.op!=='n')c+='q '+s_.o+circleD(+el.getAttribute('cx'),+el.getAttribute('cy'),+el.getAttribute('r'))+s_.op+' Q\n';}
+    else if(tag==='rect'){const s_=style(el,true);if(s_.op!=='n')c+=`q ${s_.o}${N(el.getAttribute('x'))} ${N(el.getAttribute('y'))} ${N(el.getAttribute('width'))} ${N(el.getAttribute('height'))} re ${s_.op} Q\n`;}
+    else if(tag==='text'){const fs=+el.getAttribute('font-size')||16,x0=+el.getAttribute('x'),y0=+el.getAttribute('y');
+      const runs=[];let dy=0;for(const ts of el.querySelectorAll('tspan')){dy+=+(ts.getAttribute('dy')||0);
+        const size=+(ts.getAttribute('font-size')||fs),it=ts.getAttribute('font-style')==='italic';
+        for(const part of (ts.textContent||'').match(/[\u0370-\u03ff\u2190-\u22ff\u2032\u00b1\u00b7]+|[^\u0370-\u03ff\u2190-\u22ff\u2032\u00b1\u00b7]+/g)||[]){
+          const sym=SYMBOLMAP[part[0]]!==undefined;meas.font=`${it?'italic ':''}${size}px "Times New Roman",Times,serif`;
+          runs.push({t:part,sym,it,size,dy,w:meas.measureText(part).width});}}
+      const tot=runs.reduce((a,r)=>a+r.w,0);let x=x0-tot/2;const base=y0+fs*0.33;
+      const col=hexRGB(el.getAttribute('fill')||'#000')||[0,0,0];c+=`q ${col.map(N).join(' ')} rg BT\n`;
+      for(const r of runs){const txt=r.sym?[...r.t].map(ch=>SYMBOLMAP[ch]!==undefined?SYMBOLMAP[ch]:'?').join(''):pdfStr(r.t);
+        const raw=r.sym?txt.replace(/[()\\]/g,m=>'\\'+m):txt;
+        c+=`/${r.sym?'F3':r.it?'F2':'F1'} ${N(r.size)} Tf 1 0 0 -1 ${N(x)} ${N(base+r.dy)} Tm (${raw}) Tj\n`;x+=r.w;}
+      c+='ET Q\n';}}
+  const W=e.w*S,H=e.h*S;const objs=[
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${N(W)} ${N(H)}] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >> >> /Contents 4 0 R >>`,
+    `<< /Length ${c.length} >>\nstream\n${c}endstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic /Encoding /WinAnsiEncoding >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Symbol >>',
+    `<< /Producer (Phase Portrait Sketcher) /CreationDate (D:${new Date().toISOString().replace(/[-:T]/g,'').slice(0,14)}) >>`];
+  let pdf='%PDF-1.4\n%\xE2\xE3\xCF\xD3\n';const off=[];
+  objs.forEach((o,i)=>{off.push(pdf.length);pdf+=`${i+1} 0 obj\n${o}\nendobj\n`;});
+  const xref=pdf.length;pdf+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+off.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('');
+  pdf+=`trailer\n<< /Size ${objs.length+1} /Root 1 0 R /Info ${objs.length} 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  const bytes=new Uint8Array(pdf.length);for(let i=0;i<pdf.length;i++)bytes[i]=pdf.charCodeAt(i)&255;
+  return new Blob([bytes],{type:'application/pdf'});}
 
 function tikz(){const S=50,X=p=>`(${(p.x/S).toFixed(3)},${(-p.y/S).toFixed(3)})`,W=w=>(w/S).toFixed(4)+'cm';
   const arrowTip=(L,Wd)=>`Stealth[length=${(L*AS()/S).toFixed(3)}cm,width=${(Wd*AS()/S).toFixed(3)}cm]`;
@@ -1234,7 +1341,9 @@ for(const b of document.querySelectorAll('[data-exp]'))b.onclick=()=>{closeMenus
   if(!doc.elements.length){setMsg('Nothing to export yet',true);return;}
   if(t==='svg'||t==='png'||t==='tex')exportTo(t);
   else if(t==='tikz'){$('tikzText').value=tikz();openModal('tikzModal');}
-  else if(t==='print')printPDF();};
+  else if(t==='pdf')exportTo('pdf');
+  else if(t==='printcrop')printPDF(true);
+  else if(t==='print')printPDF(false);};
 $('tikzCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('tikzText').value);setMsg('TikZ copied');}catch(e){$('tikzText').select();document.execCommand('copy');}};
 $('tikzDl').onclick=()=>exportTo('tex');
 $('bNew').onclick=()=>{if(doc.elements.length&&!confirm('Start a new drawing? (Undo can bring the old one back.)'))return;const before=snapshot();doc=newDoc();doc.structStable=$('cSS').checked;
@@ -1273,7 +1382,7 @@ function exampleDoc(){const save=doc;doc=newDoc();
 
 /* ---------- start ---------- */
 buildTools();layoutTools();loadPrefs();
-try{const s=localStorage.getItem('phaseplane-autosave');if(s){const o=JSON.parse(s);if(o&&Array.isArray(o.elements))doc=Object.assign(newDoc(),o);}}catch(e){}
+restoreAutosave();
 st.view={k:0.8,x:-svg.clientWidth/2/0.8,y:-svg.clientHeight/2/0.8};
 if(!doc.arrowScale)doc.arrowScale=1.3;
 resetKeys();st.panelDirty=true;refresh();updateTitle();if(doc.elements.length)fit();
