@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase Portrait Sketcher</title>
+<style>
+:root{
+  --bg:#f4f5f7; --panel:#ffffff; --line:#d9dce1; --text:#1d2127; --muted:#6a717c;
+  --accent:#2f81f7; --accent-weak:#e6f0ff; --bad:#d4351c; --warn:#b26a00; --ok:#1a7f5a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{display:grid;height:100vh;grid-template-columns:auto 1fr 290px;grid-template-rows:auto minmax(0,1fr) 26px;
+  grid-template-areas:"top top top" "tools stage side" "status status status"}
+#topbar{grid-area:top;position:relative;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 10px;min-height:44px;background:var(--panel);
+  border-bottom:1px solid var(--line);white-space:nowrap}
+#topbar .grp{display:flex;align-items:center;gap:6px}
+#topbar .title{font-weight:650;margin-right:8px;letter-spacing:.2px}
+#topbar .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+button,select,input{font:inherit;color:inherit}
+button{background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 9px;cursor:pointer}
+button:hover{border-color:#aab1bb;background:#fafbfc}
+button:disabled{opacity:.4;cursor:default}
+button.on{background:var(--accent-weak);border-color:var(--accent);color:#0b4fb3}
+label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.menu{position:relative}
+.menu > .items{display:none;position:fixed;top:44px;right:8px;background:#fff;border:1px solid var(--line);
+  border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:4px;z-index:20;min-width:190px}
+.menu.open > .items{display:block}
+.menu .items button{display:block;width:100%;text-align:left;border:none;padding:6px 10px}
+.menu .items button:hover{background:var(--accent-weak)}
+#tools{grid-area:tools;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;
+  align-items:center;padding:6px 6px;gap:3px;overflow-y:auto;min-height:0}
+#tools.two{display:grid;grid-template-columns:44px 44px;align-content:start;justify-items:center}
+#tools.two .grp{grid-column:1/-1}
+#tools button{width:44px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;position:relative}
+#tools button svg{width:28px;height:28px;pointer-events:none}
+#tools button .k{position:absolute;right:2px;bottom:0;font-size:9px;color:var(--muted)}
+#tools .grp{height:1px;width:36px;background:var(--line);margin:3px 0}
+#stage{grid-area:stage;position:relative;overflow:hidden;background:#fff}
+#overlay *{pointer-events:none}
+#overlay [data-h]{pointer-events:all}
+#svg{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;display:block}
+#side{grid-area:side;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;display:flex;flex-direction:column}
+#side section{padding:10px 12px;border-bottom:1px solid var(--line)}
+#side h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.row > span:first-child{flex:0 0 108px;color:var(--muted)}
+.row input[type=number]{width:72px}
+.row input[type=text]{flex:1;min-width:0}
+.row select{flex:1}
+.row input[type=range]{flex:1;min-width:0}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.hint{color:var(--muted);font-size:12px;margin:6px 0}
+#problems ul{list-style:none;margin:0;padding:0}
+#problems li{padding:5px 6px;border-radius:5px;cursor:pointer;display:flex;gap:6px}
+#problems li:hover{background:#f2f4f7}
+#problems li.bad::before{content:"●";color:var(--bad)}
+#problems li.warn::before{content:"▲";color:var(--warn);font-size:11px;line-height:17px}
+#problems .none{color:var(--ok)}
+#status{grid-area:status;display:flex;align-items:center;gap:14px;padding:0 10px;background:var(--panel);
+  border-top:1px solid var(--line);color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden}
+#status .msg{color:var(--text)}
+#status .msg.bad{color:var(--bad);font-weight:600}
+.modal{position:fixed;inset:0;background:rgba(20,24,30,.35);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal[hidden]{display:none}
+.modal .box{background:#fff;border-radius:12px;max-width:760px;width:calc(100% - 32px);max-height:86vh;overflow:auto;
+  padding:18px 22px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h2{margin:0 0 10px;font-size:18px}
+.modal h4{margin:14px 0 4px}
+.modal kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;font-size:11px;background:#fafafa}
+.modal textarea{width:100%;height:340px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+.modal table{border-collapse:collapse}
+.modal td{padding:2px 10px 2px 0;vertical-align:top}
+#print{display:none}
+@media print{
+  #app,.modal{display:none!important}
+  #print{display:block}
+  #print svg{width:100%;height:auto;max-height:96vh}
+  @page{margin:12mm}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <span class="title">Phase Portrait Sketcher</span>
+    <span class="grp"><button id="bNew" title="New drawing">New</button>
+    <button id="bOpen" title="Open native .phase.json file">Open…</button>
+    <button id="bSave" title="Save the native .phase.json file (Ctrl+S)">Save</button>
+    <button id="bSaveAs" title="Save under a new name / in another folder (Ctrl+Shift+S)">Save as…</button>
+    <span id="fileLbl" style="color:var(--muted);margin-left:2px"></span></span>
+    <span class="sep"></span>
+    <span class="grp"><button id="bUndo" title="Undo (Ctrl+Z)">↶</button>
+    <button id="bRedo" title="Redo (Ctrl+Shift+Z)">↷</button></span>
+    <span class="sep"></span>
+    <span class="grp"><button id="bZoomOut" title="Zoom out (−)">−</button>
+    <span id="zoomLbl" style="min-width:44px;text-align:center">100%</span>
+    <button id="bZoomIn" title="Zoom in (+)">+</button>
+    <button id="bFit" title="Fit drawing (0)">Fit</button></span>
+    <span class="sep"></span>
+    <span class="grp"><label class="chk" title="Show background grid"><input type="checkbox" id="cGrid" checked>Grid</label>
+    <label class="chk" title="Snap placed points to the grid"><input type="checkbox" id="cSnapGrid">Snap</label>
+    <label class="chk" title="Magnetic attachment of trajectory ends"><input type="checkbox" id="cMagnet" checked>Magnet</label></span>
+    <span class="sep"></span>
+    <span class="grp"><label class="chk" title="Enforce structural stability: only hyperbolic elements and no saddle connections"><input type="checkbox" id="cSS" checked>Structurally stable</label>
+    <label class="chk" title="Refuse edits that create crossings or other inconsistencies (otherwise only flag them)"><input type="checkbox" id="cRefuse">Refuse crossings</label></span>
+    <span style="flex:1"></span>
+    <div class="menu" id="exportMenu">
+      <button id="bExport">Export ▾</button>
+      <div class="items">
+        <button data-exp="svg">SVG image</button>
+        <button data-exp="png">PNG image (3×)</button>
+        <button data-exp="tikz">TikZ code…</button>
+        <button data-exp="tex">TikZ as .tex file…</button>
+        <button data-exp="print">Print / save as PDF…</button>
+      </div>
+    </div>
+    <button id="bHelp" title="Help (?)">?</button>
+  </header>
+
+  <nav id="tools"></nav>
+
+  <main id="stage">
+    <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+      <g id="gridLayer"></g>
+      <g id="world"><g id="scene"></g></g>
+      <g id="overlay"></g>
+    </svg>
+  </main>
+
+  <aside id="side">
+    <section id="props"></section>
+    <section id="problems"></section>
+  </aside>
+
+  <footer id="status"><span id="stTool"></span><span class="msg" id="stMsg"></span><span style="flex:1"></span><span id="stPos"></span></footer>
+</div>
+
+<div id="print"></div>
+<input type="file" id="fileInput" accept=".json,application/json" hidden>
+
+<div class="modal" id="tikzModal" hidden><div class="box">
+  <h2>TikZ export</h2>
+  <p class="hint">Needs <code>\usepackage{tikz}</code> and <code>\usetikzlibrary{arrows.meta,decorations.markings}</code>. 50 px of the drawing = 1 cm; change the <code>x</code>/<code>y</code> options to rescale. Label text is passed through verbatim, so <code>$W^s$</code> works.</p>
+  <textarea id="tikzText" spellcheck="false"></textarea>
+  <div class="btns"><button id="tikzCopy">Copy</button><button id="tikzDl">Save .tex…</button><button data-close>Close</button></div>
+</div></div>
+
+<div class="modal" id="helpModal" hidden><div class="box">
+  <h2>Phase Portrait Sketcher</h2>
+  <h4>Drawing</h4>
+  <table>
+  <tr><td><b>Trajectory</b> <kbd>T</kbd></td><td>Draw freehand; the stroke is converted to a smooth cubic Bézier path. The direction you draw in is the direction of the flow. Ends close to a sink/source, a saddle terminal, a periodic orbit or a boundary snap to it (magnet). An end snapped the wrong way round reverses the trajectory automatically when possible.</td></tr>
+  <tr><td>Joining</td><td>Drop the free end of a trajectory on the free start of another one (or draw a new one that starts/ends there) and the two are merged into one trajectory.</td></tr>
+  <tr><td><b>Simplify</b> <kbd>S</kbd></td><td>Refits the selected curve(s) with about 30% fewer nodes; press repeatedly to straighten out wobbly hand-drawn curves. The default amount of smoothing for freehand strokes is set in the panel on the right (nothing selected).</td></tr>
+  <tr><td><b>Bézier pen</b> <kbd>P</kbd></td><td>Click to add corner points, click-drag to pull out smooth handles. Finish with <kbd>Enter</kbd> or a double-click, cancel with <kbd>Esc</kbd>.</td></tr>
+  <tr><td><b>Equilibria</b> <kbd>1</kbd>–<kbd>4</kbd></td><td>Sink, source, saddle (4 terminals: unstable separatrices point out, stable ones point in), saddle-node (only when structural stability is off).</td></tr>
+  <tr><td><b>Periodic orbit</b> <kbd>C</kbd></td><td>Click for a default ellipse, or draw a closed loop. Stable = solid, unstable = dashed, semi-stable = solid with a dashed shadow on the repelling side.</td></tr>
+  <tr><td><b>Boundary</b> <kbd>B</kbd></td><td>Draw a curve the flow crosses in one direction (shown by small arrows). A closed curve is created as inflowing (trapping region); flip it in the properties panel.</td></tr>
+  <tr><td><b>Label</b> <kbd>L</kbd></td><td>Click to place text. Inside <code>$…$</code>: <code>_</code> subscript, <code>^</code> superscript, <code>\alpha</code> etc.</td></tr>
+  </table>
+  <h4>Editing</h4>
+  <table>
+  <tr><td><b>Select</b> <kbd>V</kbd></td><td>Click or drag a rectangle to select; <kbd>Shift</kbd> adds. Drag to move. Corner handles scale uniformly (<kbd>Shift</kbd>: free, <kbd>Alt</kbd>: about the centre), edge handles stretch one direction, the round handle on top rotates (<kbd>Shift</kbd>: 15° steps).</td></tr>
+  <tr><td>Nodes</td><td>A single selected curve shows its Bézier nodes (squares) and handles (dots). Drag them; <kbd>Alt</kbd>-drag a handle to break smoothness. Double-click a curve to insert a node, double-click a node to toggle smooth/corner, select a node and press <kbd>Del</kbd> to remove it. Dragging a bound end of a trajectory detaches it; drop it near a target to re-attach.</td></tr>
+  <tr><td>Saddles</td><td>Select a saddle and drag the diamond handles to rotate it or change the angle between its eigendirections.</td></tr>
+  <tr><td>Keys</td><td><kbd>Del</kbd> delete, <kbd>Ctrl+D</kbd> duplicate (never refused, so you can drag the copy into place), <kbd>S</kbd> simplify, <kbd>R</kbd> reverse trajectory/orbit, <kbd>Ctrl+A</kbd> select all, arrow keys nudge, <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Shift+Z</kbd> undo/redo, <kbd>Esc</kbd> back to Select.</td></tr>
+  <tr><td>View</td><td>Mouse wheel zooms around the cursor; pan with <kbd>Space</kbd>+drag, the middle mouse button or the hand tool <kbd>H</kbd>; <kbd>0</kbd> fits the drawing.</td></tr>
+  </table>
+  <h4>Files</h4>
+  <p><b>Save</b> / <b>Save as…</b> / <b>Open…</b> and the exports open a file dialog in Chrome and Edge (folder and name of your choice; Save then keeps writing to the same file). Safari and Firefox do not offer this to web pages, so there files go to the Downloads folder. Separatrices (trajectories attached to a saddle or saddle-node terminal) are drawn thicker; override per trajectory with <i>Line</i>. Arrow size is a drawing-wide setting in the right panel.</p>
+  <h4>Consistency checks</h4>
+  <p>With <b>Refuse crossings</b> on, an edit is undone if it makes curves cross (trajectories, separatrices, periodic orbits), runs a curve through an equilibrium, crosses a boundary against its direction, or attaches a trajectory the wrong way (e.g. flowing out of a sink). With it off, these are only flagged in red. Index warnings (equilibria inside a periodic orbit or closed transversal must have index sum 1) are always only warnings.</p>
+  <p><b>Structurally stable</b> on: only hyperbolic elements, and saddle connections are refused. Off: saddle-nodes (transversally stable/unstable), semi-stable periodic orbits and saddle connections / homoclinic loops become available.</p>
+  <div class="btns"><button id="bExample">Load example</button><button data-close>Close</button></div>
+</div></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Geometry
+   ===================================================================== */
+const vadd=(a,b)=>({x:a.x+b.x,y:a.y+b.y});
+const vsub=(a,b)=>({x:a.x-b.x,y:a.y-b.y});
+const vmul=(a,k)=>({x:a.x*k,y:a.y*k});
+const vlen=a=>Math.hypot(a.x,a.y);
+const vdist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const vdot=(a,b)=>a.x*b.x+a.y*b.y;
+const vcross=(a,b)=>a.x*b.y-a.y*b.x;
+const vnorm=a=>{const l=Math.hypot(a.x,a.y);return l>1e-12?{x:a.x/l,y:a.y/l}:{x:1,y:0};};
+const vperp=a=>({x:-a.y,y:a.x});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const D2R=Math.PI/180;
+/* angles are stored in degrees, counter-clockwise as seen on screen */
+const eqDir=deg=>({x:Math.cos(deg*D2R),y:-Math.sin(deg*D2R)});
+const dirDeg=v=>Math.atan2(-v.y,v.x)/D2R;
+const f2=v=>Math.round(v*100)/100;
+const P=p=>`${f2(p.x)} ${f2(p.y)}`;
+
+function bz(p0,p1,p2,p3,t){const m=1-t,a=m*m*m,b=3*m*m*t,c=3*m*t*t,d=t*t*t;
+  return {x:a*p0.x+b*p1.x+c*p2.x+d*p3.x,y:a*p0.y+b*p1.y+c*p2.y+d*p3.y};}
+function bzd(p0,p1,p2,p3,t){const m=1-t;
+  return {x:3*m*m*(p1.x-p0.x)+6*m*t*(p2.x-p1.x)+3*t*t*(p3.x-p2.x),
+          y:3*m*m*(p1.y-p0.y)+6*m*t*(p2.y-p1.y)+3*t*t*(p3.y-p2.y)};}
+function bzSplit(p0,p1,p2,p3,t){
+  const L=(a,b)=>({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
+  const a=L(p0,p1),b=L(p1,p2),c=L(p2,p3),d=L(a,b),e=L(b,c),m=L(d,e);
+  return [[p0,a,d,m],[m,e,c,p3]];}
+
+/* path elements: nodes {x,y,ix,iy,ox,oy,smooth} with handle offsets relative to the node */
+function segsOf(el){
+  const N=el.nodes,n=N.length,S=[];const m=el.closed?n:n-1;
+  for(let i=0;i<m;i++){const a=N[i],b=N[(i+1)%n];
+    S.push([{x:a.x,y:a.y},{x:a.x+a.ox,y:a.y+a.oy},{x:b.x+b.ix,y:b.y+b.iy},{x:b.x,y:b.y}]);}
+  return S;}
+function segCount(el){return el.closed?el.nodes.length:el.nodes.length-1;}
+function pathPt(el,t){const S=segsOf(el);let i=Math.floor(t);i=clamp(i,0,S.length-1);return bz(...S[i],clamp(t-i,0,1));}
+function pathTan(el,t){const S=segsOf(el);let i=Math.floor(t);i=clamp(i,0,S.length-1);const u=clamp(t-i,0,1);
+  let d=bzd(...S[i],u);
+  if(vlen(d)<1e-9){const u2=u<.5?u+1e-3:u-1e-3;const a=bz(...S[i],u),b=bz(...S[i],u2);d=u<.5?vsub(b,a):vsub(a,b);}
+  if(vlen(d)<1e-12)d=vsub(S[i][3],S[i][0]);
+  return d;}
+function pathD(el){const S=segsOf(el);if(!S.length)return '';let d=`M${P(S[0][0])}`;
+  for(const s of S)d+=`C${P(s[1])} ${P(s[2])} ${P(s[3])}`;if(el.closed)d+='Z';return d;}
+
+const FLAT=new WeakMap();
+function flatten(el){
+  let sig=(el.closed?'c':'o');for(const n of el.nodes)sig+=`${n.x},${n.y},${n.ix},${n.iy},${n.ox},${n.oy};`;
+  const c=FLAT.get(el);if(c&&c.sig===sig)return c.val;
+  const S=segsOf(el),pts=[];let s=0;
+  S.forEach((sg,i)=>{const L=vdist(sg[0],sg[1])+vdist(sg[1],sg[2])+vdist(sg[2],sg[3]);
+    const N=clamp(Math.ceil(L/3),6,80);
+    for(let k=(i===0?0:1);k<=N;k++){const u=k/N,p=bz(...sg,u);
+      if(pts.length)s+=vdist(p,pts[pts.length-1]);pts.push({x:p.x,y:p.y,t:i+u,s});}});
+  const val={pts,closed:!!el.closed,total:s};FLAT.set(el,{sig,val});return val;}
+function atArc(fl,f){const P_=fl.pts;if(P_.length<2)return {p:P_[0]||{x:0,y:0},tan:{x:1,y:0},t:0};
+  const target=clamp(f,0,1)*fl.total;let lo=0,hi=P_.length-1;
+  while(hi-lo>1){const m=(lo+hi)>>1;if(P_[m].s<target)lo=m;else hi=m;}
+  const a=P_[lo],b=P_[hi],L=b.s-a.s,u=L>1e-12?(target-a.s)/L:0;
+  return {p:{x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u},tan:vnorm(vsub(b,a)),t:a.t+(b.t-a.t)*u};}
+function nearestOnPoly(pts,p){let best={d:Infinity,pt:null,t:0,i:0};
+  for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],ab=vsub(b,a),L2=vdot(ab,ab);
+    const u=L2>1e-12?clamp(vdot(vsub(p,a),ab)/L2,0,1):0;const q={x:a.x+ab.x*u,y:a.y+ab.y*u};const d=vdist(p,q);
+    if(d<best.d)best={d,pt:q,t:(a.t!==undefined)?a.t+(b.t-a.t)*u:0,i};}
+  return best;}
+function nearestOnPath(el,p){return nearestOnPoly(flatten(el).pts,p);}
+function pointInPoly(pts,p){let c=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j];
+    if(((a.y>p.y)!==(b.y>p.y))&&(p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x))c=!c;}
+  return c;}
+function chunkify(pts){const ch=[];
+  for(let i=0;i<pts.length-1;i+=8){const j=Math.min(i+8,pts.length-1);
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(let k=i;k<=j;k++){const q=pts[k];if(q.x<x0)x0=q.x;if(q.y<y0)y0=q.y;if(q.x>x1)x1=q.x;if(q.y>y1)y1=q.y;}
+    ch.push({i,j,x0,y0,x1,y1});}
+  return ch;}
+function segInt(a,b,c,d){const r=vsub(b,a),s=vsub(d,c),den=vcross(r,s);if(Math.abs(den)<1e-12)return null;
+  const q=vsub(c,a),t=vcross(q,s)/den,u=vcross(q,r)/den;
+  if(t>=0&&t<1&&u>=0&&u<1)return {x:a.x+t*r.x,y:a.y+t*r.y};return null;}
+function intersectCurves(A,B,self){const res=[];
+  for(const ca of A.ch)for(const cb of B.ch){
+    if(self&&cb.i<ca.i)continue;
+    if(ca.x1<cb.x0||cb.x1<ca.x0||ca.y1<cb.y0||cb.y1<ca.y0)continue;
+    for(let i=ca.i;i<ca.j;i++)for(let k=cb.i;k<cb.j;k++){
+      if(self){if(k<=i+1)continue;if(A.closed&&i===0&&k===A.pts.length-2)continue;}
+      const r=segInt(A.pts[i],A.pts[i+1],B.pts[k],B.pts[k+1]);
+      if(r)res.push({x:r.x,y:r.y,tanA:vnorm(vsub(A.pts[i+1],A.pts[i])),tanB:vnorm(vsub(B.pts[k+1],B.pts[k]))});}}
+  return res;}
+function rdp(pts,eps){if(pts.length<3)return pts.slice();
+  const keep=new Uint8Array(pts.length);keep[0]=keep[pts.length-1]=1;const st_=[[0,pts.length-1]];
+  while(st_.length){const [a,b]=st_.pop();let md=0,mi=-1;const A=pts[a],B=pts[b],ab=vsub(B,A),L=vlen(ab);
+    for(let i=a+1;i<b;i++){const d=L>1e-9?Math.abs(vcross(ab,vsub(pts[i],A)))/L:vdist(pts[i],A);if(d>md){md=d;mi=i;}}
+    if(md>eps&&mi>0){keep[mi]=1;st_.push([a,mi],[mi,b]);}}
+  return pts.filter((_,i)=>keep[i]);}
+/* smooth interpolating cubic through points (chord-scaled Catmull-Rom) */
+function crNodes(pts,closed){const n=pts.length,N=[];
+  for(let i=0;i<n;i++){const p=pts[i];
+    let prev=closed?pts[(i-1+n)%n]:pts[i-1],next=closed?pts[(i+1)%n]:pts[i+1];
+    let din=prev?vdist(prev,p):0,dout=next?vdist(p,next):0;let m;
+    if(prev&&next)m=vmul(vsub(next,prev),1/Math.max(din+dout,1e-9));
+    else if(next)m=vnorm(vsub(next,p));else if(prev)m=vnorm(vsub(p,prev));else m={x:1,y:0};
+    if(!prev&&next){const q=pts[i+2];if(q){const t2=vmul(vsub(q,p),1/Math.max(vdist(p,next)+vdist(next,q),1e-9));
+      m=vnorm(vsub(vmul(vnorm(vsub(next,p)),2),vnorm(t2)));}}
+    if(prev&&!next){const q=pts[i-2];if(q){const t2=vmul(vsub(p,q),1/Math.max(vdist(q,prev)+vdist(prev,p),1e-9));
+      m=vnorm(vsub(vmul(vnorm(vsub(p,prev)),2),vnorm(t2)));}}
+    const mo=(prev&&next)?vmul(m,dout/3):vmul(m,dout/3),mi_=(prev&&next)?vmul(m,din/3):vmul(m,din/3);
+    N.push({x:p.x,y:p.y,ix:-mi_.x,iy:-mi_.y,ox:mo.x,oy:mo.y,smooth:true});}
+  return N;}
+function resample(pts,n,closed){const Q=closed?pts.concat([pts[0]]):pts;const cum=[0];
+  for(let i=1;i<Q.length;i++)cum.push(cum[i-1]+vdist(Q[i],Q[i-1]));const tot=cum[cum.length-1];const out=[];
+  const cnt=closed?n:n;for(let k=0;k<cnt;k++){const s=closed?tot*k/n:tot*k/(n-1);let i=1;while(i<cum.length-1&&cum[i]<s)i++;
+    const L=cum[i]-cum[i-1],u=L>1e-9?(s-cum[i-1])/L:0;out.push({x:Q[i-1].x+(Q[i].x-Q[i-1].x)*u,y:Q[i-1].y+(Q[i].y-Q[i-1].y)*u});}
+  return out;}
+function ellipseNodes(cx,cy,rx,ry,n=8){const k=4/3*Math.tan(Math.PI/(2*n)),N=[];
+  for(let i=0;i<n;i++){const th=2*Math.PI*i/n,tx=-rx*Math.sin(th)*k,ty=ry*Math.cos(th)*k;
+    N.push({x:cx+rx*Math.cos(th),y:cy+ry*Math.sin(th),ix:-tx,iy:-ty,ox:tx,oy:ty,smooth:true});}
+  return N;}
+
+/* =====================================================================
+   Model
+   ===================================================================== */
+const INK='#111', BNDC='#1a7f5a', SELC='#2f81f7';
+const R_EQ=4.5, SNAP_PX=14, CYC_OFF=2.5, W_TRAJ=1.3, W_SEP=2.0;
+function newDoc(){return {format:'phaseplane-sketch',version:1,structStable:true,arrowScale:1.3,nextId:1,elements:[]};}
+const AS=()=>(doc&&doc.arrowScale)||1;
+let doc=newDoc();
+const st={tool:'select',sel:new Set(),selNode:null,drag:null,pen:null,view:{x:-500,y:-350,k:1},space:false,
+  refuse:false,smoothing:'medium',grid:true,snapGrid:false,magnet:true,flash:null,valid:{hard:[],warn:[]},hardKeys:new Set(),
+  undo:[],redo:[],msg:'',msgBad:false,mouse:null,panelDirty:true};
+const byId=id=>doc.elements.find(e=>e.id===id);
+const fakeTraj=p=>({type:'traj',nodes:[{x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0},{x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0}],start:null,end:null});
+const isPath=el=>el&&(el.type==='traj'||el.type==='cycle'||el.type==='boundary');
+
+function mkEq(kind,x,y){return {id:doc.nextId++,type:'eq',kind,x,y,angle:0,spread:90,len:30,spiral:'none',trans:'stable'};}
+function mkTraj(nodes){return {id:doc.nextId++,type:'traj',nodes,start:null,end:null,arrows:1,arrowPos:0.5};}
+function mkCycle(nodes,stability){return {id:doc.nextId++,type:'cycle',nodes,closed:true,stability,dir:1,arrows:2};}
+function mkBoundary(nodes,closed){return {id:doc.nextId++,type:'boundary',nodes,closed,dir:1,spacing:36};}
+function mkLabel(x,y,text){return {id:doc.nextId++,type:'label',x,y,text,size:16};}
+
+const EQNAME={sink:'sink',source:'source',saddle:'saddle',sn:'saddle-node'};
+function elName(el){if(!el)return '?';
+  if(el.type==='eq')return (el.kind==='sn'?(el.trans==='stable'?'transversally stable ':'transversally unstable '):'')+EQNAME[el.kind]+' #'+el.id;
+  if(el.type==='traj')return 'trajectory #'+el.id;
+  if(el.type==='cycle')return ({stable:'stable',unstable:'unstable','semi-inner':'semi-stable','semi-outer':'semi-stable'})[el.stability]+' periodic orbit #'+el.id;
+  if(el.type==='boundary')return 'boundary #'+el.id;
+  return 'label #'+el.id;}
+
+function eqPorts(e){const Pp=[],c={x:e.x,y:e.y};
+  const stub=(port,deg)=>{const d=eqDir(deg);Pp.push({port,pos:vadd(c,vmul(d,e.len)),dir:d});};
+  if(e.kind==='sink'||e.kind==='source')Pp.push({port:'c',pos:c,dir:null});
+  else if(e.kind==='saddle'){stub('u1',e.angle);stub('u2',e.angle+180);stub('s1',e.angle+e.spread);stub('s2',e.angle+e.spread+180);}
+  else if(e.kind==='sn'){stub('cm',e.angle);stub('h1',e.angle+90);stub('h2',e.angle-90);Pp.push({port:'c',pos:c,dir:null});}
+  return Pp;}
+/* role: 'start' = trajectories leave the equilibrium here, 'end' = they arrive */
+function portRole(e,port){
+  if(e.kind==='sink')return port==='c'?{role:'end',single:false,sep:false}:null;
+  if(e.kind==='source')return port==='c'?{role:'start',single:false,sep:false}:null;
+  if(e.kind==='saddle'){if(port==='u1'||port==='u2')return {role:'start',single:true,sep:true};
+    if(port==='s1'||port==='s2')return {role:'end',single:true,sep:true};return null;}
+  if(e.kind==='sn'){const s=e.trans==='stable';
+    if(port==='cm')return {role:s?'start':'end',single:true,sep:true};
+    if(port==='h1'||port==='h2')return {role:s?'end':'start',single:true,sep:true};
+    if(port==='c')return {role:s?'end':'start',single:false,sep:false};}
+  return null;}
+function eqIndex(e){return e.kind==='saddle'?-1:e.kind==='sn'?0:1;}
+function cycleRole(stab,side){/* side +1 = trajectory lies inside the orbit */
+  if(stab==='stable')return 'end';if(stab==='unstable')return 'start';
+  if(stab==='semi-inner')return side>0?'end':'start';return side>0?'start':'end';}
+function crossDirAt(b,tan){return vmul(vperp(vnorm(tan)),b.dir||1);}
+function inwardNormal(cyc,t){const c=pathPt(cyc,t),T=vnorm(pathTan(cyc,t)),n=vperp(T);
+  return pointInPoly(flatten(cyc).pts,vadd(c,vmul(n,1.5)))?n:vmul(n,-1);}
+
+function reversePath(el){el.nodes.reverse();
+  for(const n of el.nodes){const a=n.ix,b=n.iy;n.ix=n.ox;n.iy=n.oy;n.ox=a;n.oy=b;}
+  if(el.type==='traj'){const s=el.start;el.start=el.end;el.end=s;}}
+function endNode(tr,which){return which==='start'?tr.nodes[0]:tr.nodes[tr.nodes.length-1];}
+/* point a little back from an end of a trajectory, used to decide on which side it approaches */
+function nearEndPoint(tr,which){const f=flatten(tr);if(f.total<1e-6)return endNode(tr,which);
+  const d=Math.min(15,f.total*0.3);return atArc(f,which==='start'?d/f.total:1-d/f.total).p;}
+
+function resolveAll(){const ids=new Map(doc.elements.map(e=>[e.id,e]));
+  for(const el of doc.elements)if(el.type==='traj')resolveTraj(el,ids);}
+function resolveTraj(tr,ids){
+  for(const which of ['start','end']){const b=tr[which];if(!b)continue;const tg=ids.get(b.el);
+    if(!tg||tg===tr){tr[which]=null;continue;}const n=endNode(tr,which);
+    if(tg.type==='eq'){const Pp=eqPorts(tg).find(q=>q.port===b.port);if(!Pp){tr[which]=null;continue;}
+      n.x=Pp.pos.x;n.y=Pp.pos.y;
+      if(Pp.dir){if(which==='start'){const L=Math.max(Math.hypot(n.ox,n.oy),8);n.ox=Pp.dir.x*L;n.oy=Pp.dir.y*L;}
+        else{const L=Math.max(Math.hypot(n.ix,n.iy),8);n.ix=Pp.dir.x*L;n.iy=Pp.dir.y*L;}}}
+    else if(tg.type==='cycle'){const m=segCount(tg);b.t=((b.t%m)+m)%m;
+      const c=pathPt(tg,b.t),T=vmul(vnorm(pathTan(tg,b.t)),tg.dir||1),nin=inwardNormal(tg,b.t);
+      const pos=vadd(c,vmul(nin,CYC_OFF*(b.side||1)));n.x=pos.x;n.y=pos.y;
+      if(which==='start'){const L=clamp(Math.hypot(n.ox,n.oy),8,18);n.ox=T.x*L;n.oy=T.y*L;}
+      else{const L=clamp(Math.hypot(n.ix,n.iy),8,18);n.ix=-T.x*L;n.iy=-T.y*L;}}
+    else if(tg.type==='boundary'){b.t=clamp(b.t,0,segCount(tg));const c=pathPt(tg,b.t);n.x=c.x;n.y=c.y;}
+    else tr[which]=null;}}
+
+function trajWidth(tr){const w=tr.weight||'auto';if(w==='thick')return W_SEP;if(w==='normal')return W_TRAJ;
+  return (isSepBinding(tr.start)||isSepBinding(tr.end))?W_SEP:W_TRAJ;}
+function isSepBinding(b){if(!b)return false;const tg=byId(b.el);if(!tg||tg.type!=='eq')return false;
+  const r=portRole(tg,b.port);return !!(r&&r.sep);}
+/* can trajectory tr have binding b (to element tg) at its physical end `which`, acting in flow role `role`? */
+function compat(tg,b,role,tr,which,opt={}){
+  const no=why=>({ok:false,why}),yes={ok:true};
+  if(tg.type==='eq'){const pr=portRole(tg,b.port);if(!pr)return no('no such terminal');
+    if(pr.role!==role){
+      if(pr.sep)return no(pr.role==='start'?`that is an unstable separatrix of ${elName(tg)}: the flow leaves there`:`that is a stable separatrix of ${elName(tg)}: the flow arrives there`);
+      return no(role==='end'?`the flow cannot end in a ${pr.role==='start'?'repelling':''} ${EQNAME[tg.kind]}`:`the flow cannot start from an attracting ${EQNAME[tg.kind]}`);}
+    if(pr.single&&!opt.ignoreUse){const other=doc.elements.find(e=>e.type==='traj'&&e!==tr&&
+        ['start','end'].some(w=>e[w]&&e[w].el===tg.id&&e[w].port===b.port));
+      if(other)return no('that separatrix terminal is already used by '+elName(other));}
+    if(tg.kind==='sn'&&b.port==='c'){const nb=nearEndPoint(tr,which);
+      if(vdot(vsub(nb,{x:tg.x,y:tg.y}),eqDir(tg.angle))>0)return no('the node sector of a saddle-node is on its half-filled side');}
+    if(doc.structStable&&!opt.ignoreSS&&pr.sep){const ob=tr[which==='start'?'end':'start'];
+      if(isSepBinding(ob))return no('saddle connection: not allowed while structural stability is enforced');}
+    return yes;}
+  if(tg.type==='cycle'){const need=cycleRole(tg.stability,b.side);
+    if(need!==role)return no(`trajectories ${need==='end'?'approach':'leave'} ${elName(tg)} from ${b.side>0?'inside':'outside'}`);return yes;}
+  if(tg.type==='boundary')return yes;
+  return no('cannot attach');}
+
+/* look for a magnet target near p for the end `which` of trajectory tr */
+function findSnap(p,tr,which){if(!st.magnet)return null;
+  const R=SNAP_PX/st.view.k,cands=[];
+  for(const el of doc.elements){if(el===tr)continue;
+    if(el.type==='eq'){for(const q of eqPorts(el)){const d=vdist(p,q.pos);const rr=q.port==='c'?R+R_EQ:R;
+        if(d<rr)cands.push({tg:el,b:{el:el.id,port:q.port},pos:q.pos,d:d-4});}}
+    else if(el.type==='cycle'||el.type==='boundary'){const nr=nearestOnPath(el,p);
+      if(nr.d<R){const b={el:el.id,t:nr.t};
+        if(el.type==='cycle'){const nb=nearEndPoint(tr,which);b.side=pointInPoly(flatten(el).pts,nb)?1:-1;}
+        cands.push({tg:el,b,pos:nr.pt,d:nr.d});}}
+    else if(el.type==='traj'&&tr.type==='traj'){/* join: free end -> free start of another trajectory and vice versa */
+      const q=which==='end'?(!el.start&&el.nodes[0]):(!el.end&&endNode(el,'end'));
+      if(q){const d=vdist(p,q);if(d<R)cands.push({tg:el,join:true,pos:{x:q.x,y:q.y},d:d-4});}}}
+  if(!cands.length)return null;cands.sort((a,b)=>a.d-b.d);
+  const role=which==='start'?'start':'end',other=which==='start'?'end':'start',orole=role==='start'?'end':'start';
+  let firstWhy=null;
+  for(const c of cands){if(c.join)return {...c,reverse:false};
+    const r=compat(c.tg,c.b,role,tr,which);if(r.ok)return {...c,reverse:false};
+    const r2=compat(c.tg,c.b,orole,tr,which);
+    if(r2.ok){const ob=tr[other];let ok=true;
+      if(ob){const otg=byId(ob.el);ok=otg&&compat(otg,ob,role,tr,other,{ignoreUse:true}).ok;}
+      if(ok)return {...c,reverse:true};}
+    if(!firstWhy)firstWhy={pos:c.pos,why:r.why};}
+  return {fail:true,...firstWhy};}
+function joinTraj(tr,which,other){const [A,B]=which==='end'?[tr,other]:[other,tr];
+  const a=A.nodes[A.nodes.length-1],b=B.nodes[0];const j={x:b.x,y:b.y,ix:a.ix,iy:a.iy,ox:b.ox,oy:b.oy,smooth:true};
+  const li=Math.hypot(j.ix,j.iy),lo=Math.hypot(j.ox,j.oy);
+  if(li>1e-6&&lo>1e-6){const u=vnorm({x:j.ox-j.ix,y:j.oy-j.iy});j.ix=-u.x*li;j.iy=-u.y*li;j.ox=u.x*lo;j.oy=u.y*lo;}
+  const nodes=A.nodes.slice(0,-1).concat([j],B.nodes.slice(1));const start=A.start,end=B.end;
+  tr.nodes=nodes;tr.start=start;tr.end=end;tr.arrows=Math.max(A.arrows,B.arrows);
+  if(A.weight&&A.weight!=='auto')tr.weight=A.weight;
+  doc.elements=doc.elements.filter(e=>e!==other);st.sel.delete(other.id);}
+function applySnap(tr,which,s){if(!s||s.fail)return;if(s.join){joinTraj(tr,which,s.tg);resolveAll();return;}tr[which]=s.b;if(s.reverse)reversePath(tr);resolveAll();}
+
+/* =====================================================================
+   Validation
+   ===================================================================== */
+function validate(){
+  resolveAll();const hard=new Map(),warn=[];const els=doc.elements;const ids=new Map(els.map(e=>[e.id,e]));
+  const addHard=(type,a,b,pt,msg)=>{const k=type+':'+Math.min(a,b)+':'+Math.max(a,b);
+    let h=hard.get(k);if(!h){h={key:k,type,ids:[...new Set([a,b])],pts:[],msg};hard.set(k,h);}if(pt&&h.pts.length<12)h.pts.push(pt);};
+  const curves=[];
+  for(const el of els){
+    if(isPath(el)&&el.nodes.length>=2){const f=flatten(el);curves.push({el,kind:el.type,pts:f.pts,closed:!!el.closed,ch:chunkify(f.pts)});}
+    else if(el.type==='eq'){for(const q of eqPorts(el))if(q.dir){const r=portRole(el,q.port),c={x:el.x,y:el.y};
+      const pts=r.role==='start'?[c,q.pos]:[q.pos,c];curves.push({el,kind:'stub',port:q.port,tip:q.pos,pts,closed:false,ch:chunkify(pts)});}}}
+  const attach=cv=>{const A=[];
+    if(cv.kind==='stub'){A.push({eq:cv.el.id,pos:{x:cv.el.x,y:cv.el.y}},{eq:cv.el.id,pos:cv.tip});}
+    else if(cv.kind==='traj'){for(const w of ['start','end']){const b=cv.el[w];if(b&&b.port){A.push({eq:b.el,pos:endNode(cv.el,w)});}}}
+    return A;};
+  for(const cv of curves)cv.att=attach(cv);
+  const ignore=(x,A,B)=>{
+    for(const a of A.att)for(const b of B.att)if(a.eq===b.eq&&vdist(a.pos,b.pos)<1&&vdist(x,a.pos)<7)return true;
+    for(const [T,C] of [[A,B],[B,A]])if(T.kind==='traj'&&(C.kind==='cycle'||C.kind==='boundary'))
+      for(const w of ['start','end']){const b=T.el[w];if(b&&b.el===C.el.id&&vdist(x,endNode(T.el,w))<(C.kind==='cycle'?9:4))return true;}
+    return false;};
+  const flowKinds=new Set(['traj','stub']);
+  for(let i=0;i<curves.length;i++){const A=curves[i];
+    if(A.kind==='traj'||A.kind==='cycle'){for(const x of intersectCurves(A,A,true))
+      addHard('self',A.el.id,A.el.id,x,`${elName(A.el)} crosses itself`);}
+    for(let j=i+1;j<curves.length;j++){const B=curves[j];
+      if(A.el===B.el)continue;
+      const bnd=A.kind==='boundary'?A:B.kind==='boundary'?B:null;
+      let mode='forbid';
+      if(A.kind==='boundary'&&B.kind==='boundary')continue;
+      if(bnd){const o=bnd===A?B:A;mode=flowKinds.has(o.kind)?'dir':'forbid';}
+      const X=intersectCurves(A,B,false);
+      for(const x of X){if(ignore(x,A,B))continue;
+        if(mode==='forbid'){addHard('cross',A.el.id,B.el.id,x,`${elName(A.el)} crosses ${elName(B.el)}`);}
+        else{const fl=bnd===A?B:A;const tf=bnd===A?x.tanB:x.tanA,tb=bnd===A?x.tanA:x.tanB;
+          if(vdot(tf,crossDirAt(bnd.el,tb))<=0)addHard('bnddir',fl.el.id,bnd.el.id,x,`${elName(fl.el)} crosses ${elName(bnd.el)} against its direction`);}}}}
+  /* curves through equilibria */
+  for(const e of els){if(e.type!=='eq')continue;const c={x:e.x,y:e.y};
+    for(const cv of curves){if(cv.el===e)continue;if(cv.att.some(a=>a.eq===e.id))continue;
+      const nr=nearestOnPoly(cv.pts,c);if(nr.d<R_EQ+0.5){addHard('through',cv.el.id,e.id,c,`${elName(cv.el)} runs through ${elName(e)}`);}}}
+  /* attachments */
+  const used=new Map();
+  for(const tr of els){if(tr.type!=='traj')continue;
+    for(const w of ['start','end']){const b=tr[w];if(!b)continue;const tg=ids.get(b.el);if(!tg)continue;
+      const r=compat(tg,b,w,tr,w,{ignoreSS:true,ignoreUse:true});
+      if(!r.ok)addHard('role',tr.id,tg.id,endNode(tr,w),`${elName(tr)}: ${r.why}`);
+      if(b.port){const pr=portRole(tg,b.port);if(pr&&pr.single){const k=tg.id+':'+b.port;
+        if(used.has(k))addHard('dup',tr.id,used.get(k),endNode(tr,w),`two trajectories share one separatrix terminal of ${elName(tg)}`);else used.set(k,tr.id);}}
+      if(tg.type==='boundary'&&tr.nodes.length>=2){const f=flatten(tr),pts=f.pts;
+        const tan=w==='start'?vsub(pts[1],pts[0]):vsub(pts[pts.length-1],pts[pts.length-2]);
+        if(vdot(vnorm(tan),crossDirAt(tg,pathTan(tg,b.t)))<=0)addHard('bnddir',tr.id,tg.id,endNode(tr,w),`${elName(tr)} crosses ${elName(tg)} against its direction`);}}}
+  /* warnings */
+  const eqs=els.filter(e=>e.type==='eq');
+  for(const el of els){if(!((el.type==='cycle')||(el.type==='boundary'&&el.closed)))continue;
+    const poly=flatten(el).pts;let idx=0,n=0;for(const e of eqs)if(pointInPoly(poly,e)){idx+=eqIndex(e);n++;}
+    if(idx!==1)warn.push({ids:[el.id],msg:`Index sum inside ${elName(el)} is ${idx} (should be 1${n?'':'; it encloses no equilibrium'})`});}
+  if(doc.structStable){
+    for(const e of eqs)if(e.kind==='sn')warn.push({ids:[e.id],msg:`${elName(e)} is not structurally stable`});
+    for(const c of els)if(c.type==='cycle'&&c.stability.startsWith('semi'))warn.push({ids:[c.id],msg:`${elName(c)} is not hyperbolic`});
+    for(const tr of els)if(tr.type==='traj'&&isSepBinding(tr.start)&&isSepBinding(tr.end))warn.push({ids:[tr.id],msg:`${elName(tr)} is a saddle connection`});}
+  return {hard:[...hard.values()],warn};}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+const $=id=>document.getElementById(id);
+const svg=$('svg'),sceneG=$('scene'),worldG=$('world'),overlayG=$('overlay'),gridG=$('gridLayer');
+function arrowHead(p,t,L=8,W=6.2){L*=AS();W*=AS();const b=vsub(p,vmul(t,L/2)),tip=vadd(p,vmul(t,L/2)),n=vperp(t);
+  const a1=vadd(b,vmul(n,W/2)),a2=vsub(b,vmul(n,W/2)),m=vadd(b,vmul(t,L*0.22));
+  return `M${P(tip)}L${P(a1)}L${P(m)}L${P(a2)}Z`;}
+function arrowFracs(n,pos){if(n<=0)return [];if(n===1)return [clamp(pos,0.02,0.98)];
+  const a=[];for(let i=0;i<n;i++)a.push((i+0.5)/n);return a;}
+function spiralPts(e){const c={x:e.x,y:e.y},sink=e.kind==='sink',sg=e.spiral==='cw'?1:-1,pts=[];
+  for(let i=0;i<=48;i++){const s=i/48,r=sink?17-12*s:5+12*s,th=sg*s*2.6*Math.PI+(e.angle||0)*D2R;
+    pts.push({x:c.x+r*Math.cos(th),y:c.y+r*Math.sin(th)});}
+  return pts;}
+function offsetPoly(cyc,dist){/* offset of a closed curve, positive = outward */
+  const pts=flatten(cyc).pts,poly=pts,out=[];const step=Math.max(1,Math.floor(pts.length/90));
+  for(let i=0;i<pts.length-1;i+=step){const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+    const n=vperp(vnorm(vsub(b,a)));const inside=pointInPoly(poly,vadd(pts[i],vmul(n,1.5)));
+    const no=inside?vmul(n,-1):n;out.push(vadd(pts[i],vmul(no,dist)));}
+  return out;}
+function polyD(pts,closed){if(!pts.length)return '';return 'M'+pts.map(P).join('L')+(closed?'Z':'');}
+
+const GREEK={alpha:'α',beta:'β',gamma:'γ',delta:'δ',epsilon:'ε',varepsilon:'ε',zeta:'ζ',eta:'η',theta:'θ',vartheta:'ϑ',kappa:'κ',
+  lambda:'λ',mu:'μ',nu:'ν',xi:'ξ',pi:'π',rho:'ρ',sigma:'σ',tau:'τ',phi:'ϕ',varphi:'φ',chi:'χ',psi:'ψ',omega:'ω',
+  Gamma:'Γ',Delta:'Δ',Theta:'Θ',Lambda:'Λ',Xi:'Ξ',Pi:'Π',Sigma:'Σ',Phi:'Φ',Psi:'Ψ',Omega:'Ω',infty:'∞',pm:'±',to:'→',
+  cdot:'·',prime:'′',leq:'≤',geq:'≥',neq:'≠',in:'∈',partial:'∂',ell:'ℓ'};
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function labelRuns(text){const runs=[];let math=false,i=0;
+  const push=(t,it,sh)=>{if(!t)return;const r=runs[runs.length-1];if(r&&r.it===it&&r.sh===sh)r.t+=t;else runs.push({t,it,sh});};
+  const readAtom=()=>{if(text[i]==='\\'){let j=i+1;while(j<text.length&&/[A-Za-z]/.test(text[j]))j++;const nm=text.slice(i+1,j);i=j;
+      return [{t:GREEK[nm]||nm,it:false}];}
+    if(text[i]==='{'){let d=1,j=i+1;while(j<text.length&&d){if(text[j]==='{')d++;else if(text[j]==='}')d--;j++;}
+      const inner=text.slice(i+1,j-1);i=j;const out=[];let k=0;
+      while(k<inner.length){if(inner[k]==='\\'){let j2=k+1;while(j2<inner.length&&/[A-Za-z]/.test(inner[j2]))j2++;
+          const nm=inner.slice(k+1,j2);out.push({t:GREEK[nm]||nm,it:false});k=j2;}
+        else{out.push({t:inner[k],it:/[A-Za-z]/.test(inner[k])});k++;}}
+      return out;}
+    const ch=text[i++];return [{t:ch,it:/[A-Za-z]/.test(ch)}];};
+  while(i<text.length){const ch=text[i];
+    if(ch==='$'){math=!math;i++;continue;}
+    if(!math){push(ch,false,0);i++;continue;}
+    if(ch==='_'||ch==='^'){i++;const sh=ch==='_'?1:-1;for(const a of readAtom())push(a.t,a.it,sh);continue;}
+    if(ch===' '){i++;continue;}
+    for(const a of readAtom())push(a.t,a.it,0);}
+  return runs;}
+function labelSVG(el,extra=''){const fs=el.size||16;let s=`<text x="${f2(el.x)}" y="${f2(el.y)}" font-family="'Times New Roman',Times,serif" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="${INK}"${extra}>`;
+  let cur=0;for(const r of labelRuns(el.text||'')){const target=r.sh*fs*0.32;const dy=target-cur;cur=target;
+    s+=`<tspan${dy?` dy="${f2(dy)}"`:''}${r.it?' font-style="italic"':''}${r.sh?` font-size="${f2(fs*0.7)}"`:''}>${esc(r.t)}</tspan>`;}
+  if(cur)s+=`<tspan dy="${f2(-cur)}"></tspan>`;
+  return s+'</text>';}
+function labelBox(el){const fs=el.size||16;const w=Math.max(8,labelRuns(el.text||'').reduce((a,r)=>a+r.t.length*(r.sh?0.7:1),0)*fs*0.52);
+  return {x0:el.x-w/2,y0:el.y-fs*0.6,x1:el.x+w/2,y1:el.y+fs*0.6};}
+
+function renderElement(el,exp){
+  const k=st.view.k,sel=!exp&&st.sel.has(el.id),hw=(10/k),hl=6/k;
+  const gid=exp?'':` data-id="${el.id}"`;let s='';
+  if(el.type==='traj'){const d=pathD(el);s+=`<g${gid}>`;
+    if(sel)s+=`<path d="${d}" fill="none" stroke="${SELC}" stroke-opacity=".35" stroke-width="${hl}" stroke-linecap="round"/>`;
+    if(!exp)s+=`<path d="${d}" fill="none" stroke="transparent" stroke-width="${hw}"/>`;
+    s+=`<path d="${d}" fill="none" stroke="${INK}" stroke-width="${trajWidth(el)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const fl=flatten(el);for(const fr of arrowFracs(el.arrows,el.arrowPos)){const a=atArc(fl,fr);s+=`<path d="${arrowHead(a.p,a.tan)}" fill="${INK}"/>`;}
+    s+='</g>';}
+  else if(el.type==='cycle'){const d=pathD(el);s+=`<g${gid}>`;
+    if(sel)s+=`<path d="${d}" fill="none" stroke="${SELC}" stroke-opacity=".35" stroke-width="${hl+2}"/>`;
+    if(!exp)s+=`<path d="${d}" fill="none" stroke="transparent" stroke-width="${hw}"/>`;
+    const dash=el.stability==='unstable'?' stroke-dasharray="6 4"':'';
+    s+=`<path d="${d}" fill="none" stroke="${INK}" stroke-width="2.1"${dash}/>`;
+    if(el.stability.startsWith('semi')){const out=el.stability==='semi-inner'?4:-4;
+      s+=`<path d="${polyD(offsetPoly(el,out),true)}" fill="none" stroke="${INK}" stroke-width="1.1" stroke-dasharray="3 3"/>`;}
+    const fl=flatten(el);for(const fr of arrowFracs(el.arrows,0.5)){const a=atArc(fl,fr);
+      s+=`<path d="${arrowHead(a.p,vmul(a.tan,el.dir||1),10,7.5)}" fill="${INK}"/>`;}
+    s+='</g>';}
+  else if(el.type==='boundary'){const d=pathD(el);s+=`<g${gid}>`;
+    if(sel)s+=`<path d="${d}" fill="none" stroke="${SELC}" stroke-opacity=".35" stroke-width="${hl}"/>`;
+    if(!exp)s+=`<path d="${d}" fill="none" stroke="transparent" stroke-width="${hw}"/>`;
+    s+=`<path d="${d}" fill="none" stroke="${BNDC}" stroke-width="1.5"/>`;
+    for(const m of boundaryMarks(el))s+=`<path d="M${P(m.a)}L${P(m.b)}" stroke="${BNDC}" stroke-width="1.1"/><path d="${arrowHead(m.h,m.n,7,5.5)}" fill="${BNDC}"/>`;
+    s+='</g>';}
+  else if(el.type==='eq'){const c={x:el.x,y:el.y};s+=`<g${gid}>`;
+    if(sel)s+=`<circle cx="${f2(c.x)}" cy="${f2(c.y)}" r="${f2(R_EQ+5/k)}" fill="${SELC}" fill-opacity=".25"/>`;
+    if(!exp)s+=`<circle cx="${f2(c.x)}" cy="${f2(c.y)}" r="${f2(Math.max(R_EQ+2,9/k))}" fill="transparent"/>`;
+    for(const q of eqPorts(el))if(q.dir){const r=portRole(el,q.port);
+      if(!exp)s+=`<path d="M${P(c)}L${P(q.pos)}" stroke="transparent" stroke-width="${hw}"/>`;
+      s+=`<path d="M${P(c)}L${P(q.pos)}" stroke="${INK}" stroke-width="${W_SEP}"/>`;
+      const mid=vadd(c,vmul(q.dir,el.len*0.58));s+=`<path d="${arrowHead(mid,r.role==='start'?q.dir:vmul(q.dir,-1),7.5,6)}" fill="${INK}"/>`;}
+    if((el.kind==='sink'||el.kind==='source')&&el.spiral&&el.spiral!=='none'){const pts=spiralPts(el);
+      s+=`<path d="${polyD(pts,false)}" fill="none" stroke="${INK}" stroke-width="1.1"/>`;
+      const i=24;s+=`<path d="${arrowHead(pts[i],vnorm(vsub(pts[i+1],pts[i-1])),6.5,5)}" fill="${INK}"/>`;}
+    if(el.kind==='sink')s+=`<circle cx="${f2(c.x)}" cy="${f2(c.y)}" r="${R_EQ}" fill="${INK}"/>`;
+    else if(el.kind==='source')s+=`<circle cx="${f2(c.x)}" cy="${f2(c.y)}" r="${R_EQ}" fill="#fff" stroke="${INK}" stroke-width="1.3"/>`;
+    else if(el.kind==='saddle')s+=`<circle cx="${f2(c.x)}" cy="${f2(c.y)}" r="2.6" fill="${INK}"/>`;
+    else if(el.kind==='sn'){const r=R_EQ+0.5;const nodeSide=el.angle+180,fillMid=el.trans==='stable'?nodeSide:el.angle;
+      const a=vadd(c,vmul(eqDir(fillMid-90),r)),b=vadd(c,vmul(eqDir(fillMid+90),r));
+      s+=`<circle cx="${f2(c.x)}" cy="${f2(c.y)}" r="${r}" fill="#fff" stroke="${INK}" stroke-width="1.3"/>`;
+      s+=`<path d="M${P(a)}A${r} ${r} 0 0 0 ${P(b)}Z" fill="${INK}"/>`;}
+    s+='</g>';}
+  else if(el.type==='label'){s+=`<g${gid}>`;
+    if(!exp){const b=labelBox(el);s+=`<rect x="${f2(b.x0)}" y="${f2(b.y0)}" width="${f2(b.x1-b.x0)}" height="${f2(b.y1-b.y0)}" fill="${sel?SELC:'transparent'}" fill-opacity="${sel?.15:0}"/>`;}
+    s+=labelSVG(el)+'</g>';}
+  return s;}
+function boundaryMarks(el){const fl=flatten(el),out=[];if(fl.total<1)return out;
+  const sp=Math.max(10,el.spacing||36),n=Math.max(1,Math.round(fl.total/sp));
+  for(let i=0;i<n;i++){const fr=el.closed?(i+0.5)/n:(n===1?0.5:(i+0.5)/n);const a=atArc(fl,fr),nn=crossDirAt(el,a.tan);
+    const q=AS();out.push({a:vsub(a.p,vmul(nn,5*q)),b:vadd(a.p,vmul(nn,6*q)),h:vadd(a.p,vmul(nn,9*q)),n:nn,p:a.p});}
+  return out;}
+const ORDER={boundary:0,cycle:1,traj:2,eq:3,label:4};
+function renderScene(exp){let s='';
+  const els=doc.elements.slice().sort((a,b)=>ORDER[a.type]-ORDER[b.type]);
+  for(const el of els)s+=renderElement(el,exp);return s;}
+
+const w2s=p=>({x:(p.x-st.view.x)*st.view.k,y:(p.y-st.view.y)*st.view.k});
+function elBBox(el){
+  if(isPath(el)){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(const q of flatten(el).pts){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x);y1=Math.max(y1,q.y);}return {x0,y0,x1,y1};}
+  if(el.type==='eq'){const r=(el.kind==='saddle'||el.kind==='sn')?el.len:(el.spiral&&el.spiral!=='none'?17:R_EQ);
+    return {x0:el.x-r,y0:el.y-r,x1:el.x+r,y1:el.y+r};}
+  if(el.type==='label')return labelBox(el);
+  return {x0:0,y0:0,x1:0,y1:0};}
+function unionBox(els){let b=null;for(const el of els){const q=elBBox(el);
+    b=b?{x0:Math.min(b.x0,q.x0),y0:Math.min(b.y0,q.y0),x1:Math.max(b.x1,q.x1),y1:Math.max(b.y1,q.y1)}:{...q};}return b;}
+function selEls(){return [...st.sel].map(byId).filter(Boolean);}
+function showBox(els){return st.tool==='select'&&els.length>0&&!(els.length===1&&(els[0].type==='eq'||els[0].type==='label'));}
+
+function renderOverlay(){const k=st.view.k;let s='';
+  const H=(attr,x,y,shape)=>{if(shape==='sq')return `<rect ${attr} x="${f2(x-4)}" y="${f2(y-4)}" width="8" height="8" fill="#fff" stroke="${SELC}" stroke-width="1.4"/>`;
+    if(shape==='dm')return `<path ${attr} d="M${f2(x)} ${f2(y-6)}L${f2(x+6)} ${f2(y)}L${f2(x)} ${f2(y+6)}L${f2(x-6)} ${f2(y)}Z" fill="#fff" stroke="#c26b00" stroke-width="1.4"/>`;
+    return `<circle ${attr} cx="${f2(x)}" cy="${f2(y)}" r="4.2" fill="#fff" stroke="${SELC}" stroke-width="1.4"/>`;};
+  const els=selEls();
+  if(st.tool==='select'){
+    if(els.length===1&&isPath(els[0])){const el=els[0],n=el.nodes.length;
+      el.nodes.forEach((nd,i)=>{const p=w2s(nd);
+        const showIn=el.closed||i>0,showOut=el.closed||i<n-1;
+        if(showIn){const h=w2s({x:nd.x+nd.ix,y:nd.y+nd.iy});s+=`<path d="M${P(p)}L${P(h)}" stroke="${SELC}" stroke-width="1"/>`+H(`data-h="hin:${i}"`,h.x,h.y,'c');}
+        if(showOut){const h=w2s({x:nd.x+nd.ox,y:nd.y+nd.oy});s+=`<path d="M${P(p)}L${P(h)}" stroke="${SELC}" stroke-width="1"/>`+H(`data-h="hout:${i}"`,h.x,h.y,'c');}});
+      el.nodes.forEach((nd,i)=>{const p=w2s(nd);const on=st.selNode&&st.selNode.id===el.id&&st.selNode.i===i;
+        if(el.type==='traj'){const w=i===0?'start':i===n-1?'end':null;if(w&&el[w]&&el[w].port==='c')return;}
+        s+=H(`data-h="node:${i}"`,p.x,p.y,'sq').replace('fill="#fff"',on?`fill="${SELC}"`:'fill="#fff"');
+        if(!nd.smooth)s+=`<circle cx="${f2(p.x)}" cy="${f2(p.y)}" r="1.4" fill="${SELC}" pointer-events="none"/>`;});}
+    if(els.length===1&&els[0].type==='eq'&&(els[0].kind==='saddle'||els[0].kind==='sn')){const e=els[0];
+      const ps=eqPorts(e);const u=ps.find(q=>q.port==='u1'||q.port==='cm');const sp=ps.find(q=>q.port==='s1');
+      const a=w2s(vadd(u.pos,vmul(u.dir,12/k)));s+=H('data-h="eqrot"',a.x,a.y,'dm');
+      if(sp){const b=w2s(vadd(sp.pos,vmul(sp.dir,12/k)));s+=H('data-h="eqspread"',b.x,b.y,'dm');}}
+    if(showBox(els)){const b=unionBox(els);if(b){const A=w2s({x:b.x0,y:b.y0}),B=w2s({x:b.x1,y:b.y1});
+      const x0=A.x-6,y0=A.y-6,x1=B.x+6,y1=B.y+6,xm=(x0+x1)/2,ym=(y0+y1)/2;
+      s+=`<rect x="${f2(x0)}" y="${f2(y0)}" width="${f2(x1-x0)}" height="${f2(y1-y0)}" fill="none" stroke="${SELC}" stroke-dasharray="4 3" stroke-width="1"/>`;
+      const hs=[['nw',x0,y0],['ne',x1,y0],['sw',x0,y1],['se',x1,y1],['n',xm,y0],['s',xm,y1],['w',x0,ym],['e',x1,ym]];
+      for(const [nm,x,y] of hs){if((nm==='n'||nm==='s')&&x1-x0<30)continue;if((nm==='e'||nm==='w')&&y1-y0<30)continue;
+        const cur={nw:'nwse',se:'nwse',ne:'nesw',sw:'nesw',n:'ns',s:'ns',e:'ew',w:'ew'}[nm];
+        s+=`<rect data-h="sc:${nm}" x="${f2(x-4.5)}" y="${f2(y-4.5)}" width="9" height="9" fill="${SELC}" style="cursor:${cur}-resize"/>`;}
+      s+=`<path d="M${f2(xm)} ${f2(y0)}L${f2(xm)} ${f2(y0-22)}" stroke="${SELC}"/><circle data-h="rot" cx="${f2(xm)}" cy="${f2(y0-26)}" r="5" fill="#fff" stroke="${SELC}" stroke-width="1.5" style="cursor:grab"/>`;}}}
+  const dr=st.drag;
+  if(dr&&dr.type==='marquee'){const A=w2s(dr.p0),B=w2s(dr.p1);
+    s+=`<rect x="${f2(Math.min(A.x,B.x))}" y="${f2(Math.min(A.y,B.y))}" width="${f2(Math.abs(A.x-B.x))}" height="${f2(Math.abs(A.y-B.y))}" fill="${SELC}" fill-opacity=".08" stroke="${SELC}" stroke-dasharray="3 3"/>`;}
+  if(dr&&dr.type==='stroke'&&dr.pts.length>1){s+=`<path d="${polyD(dr.pts.map(w2s),false)}" fill="none" stroke="${dr.color||INK}" stroke-width="1.5" stroke-opacity=".75"/>`;}
+  if(st.pen&&st.pen.nodes.length){const tmp={nodes:st.pen.nodes.concat(st.pen.ghost?[st.pen.ghost]:[]),closed:false};
+    if(tmp.nodes.length>1){const S=segsOf(tmp);let d=`M${P(w2s(S[0][0]))}`;for(const q of S)d+=`C${P(w2s(q[1]))} ${P(w2s(q[2]))} ${P(w2s(q[3]))}`;
+      s+=`<path d="${d}" fill="none" stroke="${INK}" stroke-width="1.4" stroke-opacity=".8"/>`;}
+    for(const nd of st.pen.nodes){const p=w2s(nd);s+=`<rect x="${f2(p.x-3.5)}" y="${f2(p.y-3.5)}" width="7" height="7" fill="#fff" stroke="${SELC}"/>`;
+      if(nd.ox||nd.oy){const h=w2s({x:nd.x+nd.ox,y:nd.y+nd.oy}),h2=w2s({x:nd.x+nd.ix,y:nd.y+nd.iy});
+        s+=`<path d="M${P(h2)}L${P(h)}" stroke="${SELC}"/><circle cx="${f2(h.x)}" cy="${f2(h.y)}" r="3" fill="${SELC}"/>`;}}}
+  for(const m of (st.magnets||[])){const p=w2s(m.pos);const col=m.fail?'#d4351c':'#1a9b4b';
+    s+=`<circle cx="${f2(p.x)}" cy="${f2(p.y)}" r="9" fill="${col}" fill-opacity=".15" stroke="${col}" stroke-width="2"/>`;}
+  const bad=st.valid.hard;for(const h of bad)for(const pt of h.pts){const p=w2s(pt);
+    s+=`<circle cx="${f2(p.x)}" cy="${f2(p.y)}" r="7" fill="none" stroke="#d4351c" stroke-width="2"/>`;}
+  if(st.flash&&performance.now()<st.flash.until){for(const pt of st.flash.pts){const p=w2s(pt);
+      s+=`<circle cx="${f2(p.x)}" cy="${f2(p.y)}" r="12" fill="#d4351c" fill-opacity=".25" stroke="#d4351c" stroke-width="2.5"/>`;}
+    if(st.flash.ghost)s+=st.flash.ghost;}
+  overlayG.innerHTML=s;}
+
+function renderGrid(){if(!st.grid){gridG.innerHTML='';return;}
+  const k=st.view.k,W=svg.clientWidth,Hh=svg.clientHeight;let step=20;while(step*k<9)step*=5;while(step*k>90)step/=5;
+  const x0=Math.floor(st.view.x/step)*step,y0=Math.floor(st.view.y/step)*step;let d='',d2='';
+  for(let x=x0;x<=st.view.x+W/k;x+=step){const sx=f2((x-st.view.x)*k);const major=Math.abs(Math.round(x/step))%5===0;
+    (major?(d2+=`M${sx} 0V${Hh}`):(d+=`M${sx} 0V${Hh}`));}
+  for(let y=y0;y<=st.view.y+Hh/k;y+=step){const sy=f2((y-st.view.y)*k);const major=Math.abs(Math.round(y/step))%5===0;
+    (major?(d2+=`M0 ${sy}H${W}`):(d+=`M0 ${sy}H${W}`));}
+  gridG.innerHTML=`<path d="${d}" stroke="#eef0f3" stroke-width="1"/><path d="${d2}" stroke="#e1e4e9" stroke-width="1"/>`;}
+
+let rafPending=false;
+function refresh(opts={}){
+  st.valid=validate();
+  worldG.setAttribute('transform',`translate(${f2(-st.view.x*st.view.k)},${f2(-st.view.y*st.view.k)}) scale(${st.view.k})`);
+  for(const id of [...st.sel])if(!byId(id))st.sel.delete(id);
+  if(st.selNode&&(!byId(st.selNode.id)||!st.sel.has(st.selNode.id)))st.selNode=null;
+  sceneG.innerHTML=renderScene(false);renderOverlay();renderGrid();renderProblems();renderStatus();
+  if(opts.panel||st.panelDirty){renderPanel();st.panelDirty=false;}
+  updateToolbar();}
+function schedule(){if(rafPending)return;rafPending=true;requestAnimationFrame(()=>{rafPending=false;refresh();});}
+
+/* =====================================================================
+   History / commit with refusal
+   ===================================================================== */
+const opt_force=o=>!!(o&&o.force);
+function snapshot(){return JSON.stringify(doc);}
+function setMsg(m,bad=false){st.msg=m;st.msgBad=bad;renderStatus();}
+function commit(before,label,opts={}){
+  if(before===snapshot()){refresh();return true;}
+  const v=validate();const fresh=v.hard.filter(h=>!st.hardKeys.has(h.key));
+  if(st.refuse&&fresh.length&&!opt_force(opts)){
+    const ghost=renderScene(true);
+    doc=JSON.parse(before);
+    st.flash={pts:fresh.flatMap(h=>h.pts).slice(0,20),until:performance.now()+1600,
+      ghost:`<g transform="${worldG.getAttribute('transform')}" opacity=".28" pointer-events="none">${ghost}</g>`};
+    setTimeout(schedule,1650);
+    st.valid=validate();setMsg('Refused: '+fresh[0].msg+(fresh.length>1?` (+${fresh.length-1} more)`:''),true);
+    st.panelDirty=true;refresh();return false;}
+  st.undo.push(before);if(st.undo.length>300)st.undo.shift();st.redo=[];
+  st.valid=v;st.hardKeys=new Set(v.hard.map(h=>h.key));
+  if(label)setMsg(label);autosave();st.panelDirty=true;refresh();return true;}
+function resetKeys(){st.valid=validate();st.hardKeys=new Set(st.valid.hard.map(h=>h.key));}
+function undo(){if(!st.undo.length)return;st.redo.push(snapshot());doc=JSON.parse(st.undo.pop());resetKeys();autosave();st.panelDirty=true;setMsg('Undo');refresh();}
+function redo(){if(!st.redo.length)return;st.undo.push(snapshot());doc=JSON.parse(st.redo.pop());resetKeys();autosave();st.panelDirty=true;setMsg('Redo');refresh();}
+function autosave(){try{localStorage.setItem('phaseplane-autosave',snapshot());}catch(e){}}
+
+/* =====================================================================
+   Tools
+   ===================================================================== */
+const ICON={
+ select:'<path d="M7 4l13 8-6 1.5L11 20z" fill="#333"/>',
+ pan:'<path d="M14 3v9M14 3l-3 3M14 3l3 3M14 25v-9M14 25l-3-3M14 25l3-3M3 14h9M3 14l3-3M3 14l3 3M25 14h-9M25 14l-3-3M25 14l-3 3" stroke="#333" stroke-width="1.6" fill="none"/>',
+ traj:'<path d="M4 22C8 6 18 22 24 6" fill="none" stroke="#111" stroke-width="1.8"/><path d="M14.3 15.6l4.6-1.2-1.3 4.5z" fill="#111"/>',
+ pen:'<path d="M4 23C9 23 10 6 22 6" fill="none" stroke="#111" stroke-width="1.6"/><rect x="2" y="21" width="4" height="4" fill="#fff" stroke="#2f81f7"/><rect x="20" y="4" width="4" height="4" fill="#fff" stroke="#2f81f7"/><path d="M22 6L27 10M22 6L17 2" stroke="#2f81f7"/>',
+ sink:'<circle cx="14" cy="14" r="5" fill="#111"/>',
+ source:'<circle cx="14" cy="14" r="5" fill="#fff" stroke="#111" stroke-width="1.6"/>',
+ saddle:'<path d="M3 14h22M14 3v22" stroke="#111" stroke-width="1.5"/><circle cx="14" cy="14" r="2.6" fill="#111"/><path d="M21 14l-3.5-2.4v4.8zM7 14l3.5-2.4v4.8zM14 7l-2.4-3.5h4.8zM14 21l-2.4 3.5h4.8z" fill="#111"/>',
+ sn:'<path d="M14 14h11M14 3v22" stroke="#111" stroke-width="1.5"/><circle cx="14" cy="14" r="5" fill="#fff" stroke="#111" stroke-width="1.4"/><path d="M14 9A5 5 0 0 0 14 19z" fill="#111"/><path d="M23 14l-3.5-2.4v4.8z" fill="#111"/>',
+ cycle:'<ellipse cx="14" cy="14" rx="10" ry="7.5" fill="none" stroke="#111" stroke-width="2"/><path d="M14 6.5l-4 -2.3v4.6z" fill="#111"/>',
+ boundary:'<path d="M4 20C9 10 18 22 24 9" fill="none" stroke="#1a7f5a" stroke-width="1.8"/><path d="M9 13l-2-5M17 17l1-5" stroke="#1a7f5a" stroke-width="1.2"/><path d="M7 6.5l-1.6 3 2.9-.6zM18.4 10.5l-2 2.5 3 .3z" fill="#1a7f5a"/>',
+ label:'<text x="14" y="20" text-anchor="middle" font-family="Times New Roman,serif" font-style="italic" font-size="17" fill="#111">x₁</text>'};
+const TOOLS=[
+ ['select','Select / edit (V)','V'],['pan','Pan (H)','H'],null,
+ ['traj','Trajectory, freehand (T)','T'],['pen','Trajectory, Bézier pen (P)','P'],null,
+ ['sink','Sink (1)','1'],['source','Source (2)','2'],['saddle','Saddle (3)','3'],['sn','Saddle-node (4) – codim 1','4'],null,
+ ['cycle','Periodic orbit (C) – click or draw a loop','C'],['boundary','Inflow/outflow boundary (B)','B'],null,['label','Text label (L)','L']];
+function buildTools(){const box=$('tools');box.innerHTML='';
+  for(const t of TOOLS){if(!t){const d=document.createElement('div');d.className='grp';box.appendChild(d);continue;}
+    const b=document.createElement('button');b.title=t[1];b.dataset.tool=t[0];
+    b.innerHTML=`<svg viewBox="0 0 28 28">${ICON[t[0]]}</svg><span class="k">${t[2]}</span>`;
+    b.onclick=()=>setTool(t[0]);box.appendChild(b);}}
+function setTool(t){if(t==='sn'&&doc.structStable){setMsg('Saddle-nodes need “Structurally stable” switched off',true);return;}
+  if(st.pen)finishPen(false);st.tool=t;st.magnets=[];st.lastDown=null;
+  svg.style.cursor=t==='pan'?'grab':t==='select'?'default':'crosshair';st.panelDirty=true;refresh();}
+function updateToolbar(){for(const b of document.querySelectorAll('#tools button')){b.classList.toggle('on',b.dataset.tool===st.tool);
+    if(b.dataset.tool==='sn')b.disabled=doc.structStable;}
+  $('bUndo').disabled=!st.undo.length;$('bRedo').disabled=!st.redo.length;
+  $('zoomLbl').textContent=Math.round(st.view.k*100)+'%';$('cSS').checked=doc.structStable;}
+const TOOLHINT={select:'Click to select, drag to move; drag empty space for a selection box',pan:'Drag to pan',
+  traj:'Draw a trajectory in the direction of the flow; ends snap to targets',pen:'Click / click-drag to add nodes; Enter or double-click to finish',
+  sink:'Click to place a sink',source:'Click to place a source',saddle:'Click to place a saddle',sn:'Click to place a saddle-node',
+  cycle:'Click for an ellipse, or draw a closed loop',boundary:'Draw a boundary curve (close the loop for a trapping region)',label:'Click to place a label'};
+function renderStatus(){$('stTool').textContent=TOOLHINT[st.tool]||'';const m=$('stMsg');m.textContent=st.msg||'';m.className='msg'+(st.msgBad?' bad':'');
+  $('stPos').textContent=st.mouse?`x ${Math.round(st.mouse.x)}  y ${Math.round(-st.mouse.y)}`:'';}
+
+/* ---------- pointer handling ---------- */
+function toWorld(e){const r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)/st.view.k+st.view.x,y:(e.clientY-r.top)/st.view.k+st.view.y};}
+function gsnap(p){if(!st.snapGrid)return p;const g=10;return {x:Math.round(p.x/g)*g,y:Math.round(p.y/g)*g};}
+function hitId(target){const g=target.closest&&target.closest('[data-id]');return g?+g.dataset.id:null;}
+
+svg.addEventListener('pointerdown',e=>{
+  if(e.target.closest&&e.target.closest('.menu'))return;
+  closeMenus();
+  const now=performance.now(),ld=st.lastDown;
+  const dbl=e.button===0&&ld&&now-ld.t<380&&Math.hypot(e.clientX-ld.x,e.clientY-ld.y)<6;
+  st.lastDown=null;st.downAt=dbl?null:{t:now,x:e.clientX,y:e.clientY};
+  if(dbl&&!st.space&&st.tool!=='pan'){st.drag=null;onDouble(e);return;}
+  svg.setPointerCapture(e.pointerId);
+  const p=toWorld(e);
+  if(e.button===1||st.space||st.tool==='pan'){st.drag={type:'pan',sx:e.clientX,sy:e.clientY,vx:st.view.x,vy:st.view.y};svg.style.cursor='grabbing';e.preventDefault();return;}
+  if(e.button!==0)return;
+  const t=st.tool;
+  if(t==='select')return downSelect(e,p);
+  if(t==='traj'||t==='boundary'||t==='cycle'){st.drag={type:'stroke',tool:t,pts:[p],color:t==='boundary'?BNDC:INK};
+    if(t==='traj'){const m=findSnap(p,fakeTraj(p),'start');st.magnets=m?[m]:[];}return;}
+  if(t==='pen')return downPen(e,p);
+  if(t==='sink'||t==='source'||t==='saddle'||t==='sn'){const before=snapshot();const q=gsnap(p);const el=mkEq(t,q.x,q.y);doc.elements.push(el);
+    st.sel=new Set([el.id]);commit(before,'Placed '+EQNAME[t]);return;}
+  if(t==='label'){const before=snapshot();const q=gsnap(p);const el=mkLabel(q.x,q.y,'$x$');doc.elements.push(el);st.sel=new Set([el.id]);
+    commit(before,'Label placed – edit its text on the right');setTool('select');
+    setTimeout(()=>{const inp=document.querySelector('#props [data-prop="text"]');if(inp){inp.focus();inp.select();}},0);return;}
+});
+function downSelect(e,p){
+  const h=e.target.closest&&e.target.closest('[data-h]');
+  const before=snapshot();
+  if(h){const [kind,arg]=h.dataset.h.split(':');const el=selEls()[0];
+    if(kind==='node'||kind==='hin'||kind==='hout'){const i=+arg;st.selNode={id:el.id,i};
+      const d={type:kind,id:el.id,i,before,p0:p,moved:false};
+      if(kind==='node'&&el.type==='traj'&&(i===0||i===el.nodes.length-1)){d.which=i===0?'start':'end';}
+      st.drag=d;renderOverlay();return;}
+    if(kind==='sc'||kind==='rot'){const els=selEls(),b=unionBox(els);
+      st.drag={type:kind==='sc'?'scale':'rotate',handle:arg,box:b,before,base:JSON.parse(before),p0:p,ids:[...st.sel]};return;}
+    if(kind==='eqrot'||kind==='eqspread'){st.drag={type:kind,id:el.id,before};return;}}
+  const id=hitId(e.target);
+  if(id!=null){if(e.shiftKey){if(st.sel.has(id))st.sel.delete(id);else st.sel.add(id);}
+    else if(!st.sel.has(id)){st.sel=new Set([id]);}
+    st.selNode=null;st.panelDirty=true;
+    st.drag={type:'move',before,base:JSON.parse(before),p0:p,moved:false,ids:[...st.sel]};refresh();return;}
+  if(!e.shiftKey){st.sel.clear();st.selNode=null;}
+  st.panelDirty=true;st.drag={type:'marquee',p0:p,p1:p,add:e.shiftKey,prev:new Set(st.sel)};refresh();}
+
+svg.addEventListener('pointermove',e=>{
+  const p=toWorld(e);st.mouse=p;const d=st.drag;
+  if(!d){if(st.pen){st.pen.ghost={x:p.x,y:p.y,ix:0,iy:0,ox:0,oy:0};renderOverlay();}
+    else if(st.tool==='traj'||st.tool==='pen'){const m=findSnap(p,fakeTraj(p),'start');
+      st.magnets=m&&!m.fail?[m]:[];renderOverlay();}
+    renderStatus();return;}
+  if(d.type==='pan'){st.view.x=d.vx-(e.clientX-d.sx)/st.view.k;st.view.y=d.vy-(e.clientY-d.sy)/st.view.k;schedule();return;}
+  if(d.type==='stroke'){const last=d.pts[d.pts.length-1];if(vdist(last,p)*st.view.k>=2)d.pts.push(p);
+    if(d.tool==='traj'){const tmp=strokeTraj(d.pts,true);st.magnets=[];
+      if(tmp){const a=findSnap(tmp.nodes[0],tmp,'start'),b=findSnap(p,tmp,'end');if(a)st.magnets.push(a);if(b)st.magnets.push(b);
+        const f=st.magnets.find(m=>m.fail);setMsg(f?'Cannot attach here: '+f.why:'',!!f);}}
+    renderOverlay();return;}
+  if(d.type==='penhandle'){const nd=st.pen.nodes[st.pen.nodes.length-1];const v=vsub(p,nd);
+    if(vlen(v)*st.view.k>3){nd.ox=v.x;nd.oy=v.y;nd.ix=-v.x;nd.iy=-v.y;nd.smooth=true;}renderOverlay();return;}
+  if(d.type==='marquee'){d.p1=p;const x0=Math.min(d.p0.x,p.x),x1=Math.max(d.p0.x,p.x),y0=Math.min(d.p0.y,p.y),y1=Math.max(d.p0.y,p.y);
+    st.sel=new Set(d.prev);for(const el of doc.elements){const b=elBBox(el);if(b.x0>=x0&&b.x1<=x1&&b.y0>=y0&&b.y1<=y1)st.sel.add(el.id);}
+    schedule();return;}
+  if(d.type==='move'){let dx=p.x-d.p0.x,dy=p.y-d.p0.y;if(!d.moved&&Math.hypot(dx,dy)*st.view.k<3)return;d.moved=true;
+    if(st.snapGrid){dx=Math.round(dx/10)*10;dy=Math.round(dy/10)*10;}
+    doc=structuredClone(d.base);for(const id of d.ids){const el=byId(id);if(el)affine(el,{a:1,b:0,c:0,d:1,e:dx,f:dy});}
+    schedule();return;}
+  if(d.type==='scale'||d.type==='rotate'){doc=structuredClone(d.base);const M=d.type==='scale'?scaleMatrix(d,p,e):rotMatrix(d,p,e);
+    for(const id of d.ids){const el=byId(id);if(el)affine(el,M);}schedule();return;}
+  if(d.type==='eqrot'||d.type==='eqspread'){const el=byId(d.id);let deg=dirDeg(vsub(p,el));if(e.shiftKey)deg=Math.round(deg/15)*15;
+    if(d.type==='eqrot')el.angle=((deg%360)+360)%360;
+    else{let s=((deg-el.angle)%360+360)%360;if(s>180)s-=180;el.spread=clamp(Math.round(s),10,170);}
+    st.panelDirty=true;schedule();return;}
+  if(d.type==='node'||d.type==='hin'||d.type==='hout'){const el=byId(d.id);if(!el)return;const nd=el.nodes[d.i];d.moved=true;
+    if(d.type==='node'){const q=gsnap(p);
+      if(d.which){if(el[d.which]){el[d.which]=null;}nd.x=q.x;nd.y=q.y;const m=findSnap(q,el,d.which);st.magnets=m?[m]:[];
+        if(m&&!m.fail){nd.x=m.pos.x;nd.y=m.pos.y;}d.snap=m;setMsg(m&&m.fail?'Cannot attach here: '+m.why:'',!!(m&&m.fail));}
+      else{nd.x=q.x;nd.y=q.y;}}
+    else{const v=vsub(p,nd);const [kx,ky,ox,oy]=d.type==='hin'?['ix','iy','ox','oy']:['ox','oy','ix','iy'];
+      nd[kx]=v.x;nd[ky]=v.y;if(e.altKey)nd.smooth=false;
+      if(nd.smooth){const L=Math.hypot(nd[ox],nd[oy]);const u=vnorm(v);if(L>1e-6){nd[ox]=-u.x*L;nd[oy]=-u.y*L;}}}
+    schedule();return;}
+});
+svg.addEventListener('pointerup',e=>{const d=st.drag;st.drag=null;
+  const da=st.downAt;st.lastDown=(da&&Math.hypot(e.clientX-da.x,e.clientY-da.y)<6)?da:null;
+  if(!d)return;
+  if(d.type==='pan'){svg.style.cursor=st.tool==='pan'?'grab':st.tool==='select'?'default':'crosshair';return;}
+  if(d.type==='stroke'){st.magnets=[];finishStroke(d);return;}
+  if(d.type==='penhandle'){renderOverlay();return;}
+  if(d.type==='marquee'){st.panelDirty=true;refresh();return;}
+  if(d.type==='move'){if(d.moved)commit(d.before,'Moved');else refresh();return;}
+  if(d.type==='scale'||d.type==='rotate'){commit(d.before,d.type==='scale'?'Scaled':'Rotated');return;}
+  if(d.type==='eqrot'||d.type==='eqspread'){commit(d.before,'Saddle adjusted');return;}
+  if(d.type==='node'||d.type==='hin'||d.type==='hout'){st.magnets=[];
+    if(d.which&&d.snap&&!d.snap.fail){const el=byId(d.id);applySnap(el,d.which,d.snap);}
+    if(d.moved)commit(d.before,d.which&&d.snap&&!d.snap.fail?(d.snap.join?'Trajectories joined':'Attached'):'Edited');else refresh();return;}
+});
+function onDouble(e){
+  if(st.tool==='pen'){finishPen(true);return;}
+  if(st.tool!=='select')return;const p=toWorld(e);
+  const tgt=document.elementFromPoint(e.clientX,e.clientY)||e.target;
+  const h=tgt.closest&&tgt.closest('[data-h]');
+  if(h&&h.dataset.h.startsWith('node:')){const el=selEls()[0];const i=+h.dataset.h.split(':')[1];const before=snapshot();
+    const nd=el.nodes[i];nd.smooth=!nd.smooth;
+    if(nd.smooth){const a=vnorm({x:nd.ox-nd.ix,y:nd.oy-nd.iy});const li=Math.hypot(nd.ix,nd.iy)||20,lo=Math.hypot(nd.ox,nd.oy)||20;
+      nd.ix=-a.x*li;nd.iy=-a.y*li;nd.ox=a.x*lo;nd.oy=a.y*lo;}
+    commit(before,nd.smooth?'Node made smooth':'Node made a corner');return;}
+  const id=hitId(tgt);if(id==null)return;const el=byId(id);
+  if(el.type==='label'){st.sel=new Set([id]);st.panelDirty=true;refresh();const inp=document.querySelector('#props [data-prop="text"]');if(inp){inp.focus();inp.select();}return;}
+  if(isPath(el)){insertNode(el,p);}}
+svg.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(-e.deltaY*(e.deltaMode===1?0.05:0.0015));zoomAt(toWorld(e),st.view.k*f);},{passive:false});
+svg.addEventListener('pointerleave',()=>{st.mouse=null;if(!st.drag){st.magnets=[];renderOverlay();}renderStatus();});
+
+function zoomAt(p,k){k=clamp(k,0.05,40);const r=svg.getBoundingClientRect();
+  const sx=(p.x-st.view.x)*st.view.k,sy=(p.y-st.view.y)*st.view.k;st.view.k=k;st.view.x=p.x-sx/k;st.view.y=p.y-sy/k;schedule();}
+function zoomCenter(f){const W=svg.clientWidth,H=svg.clientHeight;zoomAt({x:st.view.x+W/2/st.view.k,y:st.view.y+H/2/st.view.k},st.view.k*f);}
+function fit(){const b=unionBox(doc.elements);const W=svg.clientWidth,H=svg.clientHeight;
+  if(!b){st.view={k:0.8,x:-W/2/0.8,y:-H/2/0.8};schedule();return;}
+  const m=40,bw=Math.max(b.x1-b.x0,50),bh=Math.max(b.y1-b.y0,50);const k=clamp(Math.min((W-2*m)/bw,(H-2*m)/bh),0.05,4);
+  st.view={k,x:(b.x0+b.x1)/2-W/2/k,y:(b.y0+b.y1)/2-H/2/k};schedule();}
+
+/* ---------- transforms ---------- */
+function affine(el,M){const mp=p=>({x:M.a*p.x+M.c*p.y+M.e,y:M.b*p.x+M.d*p.y+M.f});const lin=v=>({x:M.a*v.x+M.c*v.y,y:M.b*v.x+M.d*v.y});
+  const det=M.a*M.d-M.b*M.c;
+  if(isPath(el)){for(const n of el.nodes){const q=mp(n);n.x=q.x;n.y=q.y;const i=lin({x:n.ix,y:n.iy}),o=lin({x:n.ox,y:n.oy});n.ix=i.x;n.iy=i.y;n.ox=o.x;n.oy=o.y;}
+    if(det<0&&el.type==='boundary')el.dir=-(el.dir||1);}
+  else if(el.type==='eq'){const q=mp(el);el.x=q.x;el.y=q.y;const u=lin(eqDir(el.angle));const na=dirDeg(u);
+    if(el.kind==='saddle'){const s=lin(eqDir(el.angle+el.spread));let sp=((dirDeg(s)-na)%360+360)%360;if(sp>180)sp-=180;el.spread=clamp(Math.round(sp*10)/10,5,175);}
+    el.angle=((na%360)+360)%360;if(det<0&&el.spiral&&el.spiral!=='none')el.spiral=el.spiral==='cw'?'ccw':'cw';}
+  else if(el.type==='label'){const q=mp(el);el.x=q.x;el.y=q.y;}}
+function scaleMatrix(d,p,e){const b=d.box,h=d.handle;const cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;
+  const hx=h.includes('w')?b.x0:h.includes('e')?b.x1:cx,hy=h.includes('n')?b.y0:h.includes('s')?b.y1:cy;
+  let ax=e.altKey?cx:(h.includes('w')?b.x1:h.includes('e')?b.x0:cx),ay=e.altKey?cy:(h.includes('n')?b.y1:h.includes('s')?b.y0:cy);
+  const safe=(num,den)=>Math.abs(den)<1e-6?1:num/den;
+  let sx=safe(p.x-ax,hx-ax),sy=safe(p.y-ay,hy-ay);
+  if(h.length===1){if(h==='n'||h==='s')sx=1;else sy=1;}
+  else if(!e.shiftKey){const v={x:hx-ax,y:hy-ay},L2=vdot(v,v);const s=L2>1e-9?vdot({x:p.x-ax,y:p.y-ay},v)/L2:1;sx=sy=s;}
+  const lim=s=>Math.sign(s||1)*Math.max(Math.abs(s),0.02);sx=lim(sx);sy=lim(sy);
+  return {a:sx,b:0,c:0,d:sy,e:ax-sx*ax,f:ay-sy*ay};}
+function rotMatrix(d,p,e){const b=d.box,c={x:(b.x0+b.x1)/2,y:(b.y0+b.y1)/2};
+  let th=Math.atan2(p.y-c.y,p.x-c.x)-Math.atan2(d.p0.y-c.y,d.p0.x-c.x);if(e.shiftKey)th=Math.round(th/(Math.PI/12))*(Math.PI/12);
+  const C=Math.cos(th),S=Math.sin(th);return {a:C,b:S,c:-S,d:C,e:c.x-C*c.x+S*c.y,f:c.y-S*c.x-C*c.y};}
+
+/* ---------- stroke → curves ---------- */
+const SMOOTH={low:{eps:2,gap:8,passes:1},medium:{eps:4,gap:16,passes:4},high:{eps:7,gap:28,passes:10}};
+function strokeTraj(pts,preview){const k=st.view.k;if(pts.length<2)return null;
+  let tot=0;for(let i=1;i<pts.length;i++)tot+=vdist(pts[i],pts[i-1]);if(tot*k<6)return null;
+  const sm=SMOOTH[st.smoothing]||SMOOTH.medium;
+  pts=smoothPoly(pts,sm.passes,false);
+  let s=rdp(pts,sm.eps/k);if(s.length<2)s=[pts[0],pts[pts.length-1]];
+  if(s.length>2){const keep=[s[0]];for(let i=1;i<s.length-1;i++)if(vdist(s[i],keep[keep.length-1])*k>sm.gap)keep.push(s[i]);keep.push(s[s.length-1]);s=keep;}
+  const nodes=crNodes(s,false);return preview?{type:'traj',nodes,start:null,end:null}:mkTraj(nodes);}
+function closedNodes(pts){let tot=0;for(let i=1;i<pts.length;i++)tot+=vdist(pts[i],pts[i-1]);tot+=vdist(pts[0],pts[pts.length-1]);
+  const n=clamp(Math.round(tot/45),6,16);return crNodes(resample(pts,n,true),true);}
+function finishStroke(d){const k=st.view.k,pts=d.pts;const before=snapshot();
+  let tot=0;for(let i=1;i<pts.length;i++)tot+=vdist(pts[i],pts[i-1]);
+  if(d.tool==='cycle'){let el;
+    if(tot*k<12){const q=gsnap(pts[0]);el=mkCycle(ellipseNodes(q.x,q.y,60,42),'stable');}
+    else el=mkCycle(closedNodes(pts),'stable');
+    doc.elements.push(el);st.sel=new Set([el.id]);commit(before,'Periodic orbit created – set its stability on the right');return;}
+  if(d.tool==='boundary'){if(tot*k<12){refresh();return;}
+    const closed=vdist(pts[0],pts[pts.length-1])*k<25&&tot*k>80;let el;
+    if(closed){el=mkBoundary(closedNodes(pts),true);
+      const f=flatten(el),a=atArc(f,0.1);if(!pointInPoly(f.pts,vadd(a.p,vmul(crossDirAt(el,a.tan),2))))el.dir=-1;}
+    else{const tr=strokeTraj(pts,true);if(!tr){refresh();return;}el=mkBoundary(tr.nodes,false);}
+    doc.elements.push(el);st.sel=new Set([el.id]);commit(before,closed?'Closed inflow boundary created':'Boundary created – flip its direction on the right if needed');return;}
+  if(d.tool==='traj'){const tr=strokeTraj(pts,false);if(!tr){refresh();return;}
+    doc.elements.push(tr);
+    const a=findSnap(tr.nodes[0],tr,'start');if(a&&!a.fail)applySnap(tr,'start',a);
+    const b=findSnap(endNode(tr,'end'),tr,'end');if(b&&!b.fail)applySnap(tr,'end',b);
+    const fl=[a,b].find(x=>x&&x.fail);const jn=[a,b].some(x=>x&&x.join);
+    st.sel=new Set([tr.id]);if(commit(before,jn?'Trajectory added and joined':'Trajectory added')&&fl)setMsg('Trajectory added, but not attached: '+fl.why,true);}}
+
+/* ---------- pen ---------- */
+function downPen(e,p){if(!st.pen)st.pen={nodes:[],before:snapshot()};
+  const nodes=st.pen.nodes;let q=gsnap(p);
+  if(nodes.length===0){const m=findSnap(q,fakeTraj(q),'start');if(m&&!m.fail)q=m.pos;}
+  if(nodes.length&&vdist(nodes[nodes.length-1],q)*st.view.k<4)return;
+  nodes.push({x:q.x,y:q.y,ix:0,iy:0,ox:0,oy:0,smooth:false});st.drag={type:'penhandle'};renderOverlay();}
+function finishPen(create){const pen=st.pen;st.pen=null;if(!pen)return;
+  const nodes=pen.nodes;while(nodes.length>1&&vdist(nodes[nodes.length-1],nodes[nodes.length-2])*st.view.k<4)nodes.pop();
+  if(!create||nodes.length<2){refresh();return;}
+  /* corner points without handles get gentle automatic handles */
+  for(let i=0;i<nodes.length;i++){const n=nodes[i];if(n.ox||n.oy||n.ix||n.iy)continue;
+    const prev=nodes[i-1],next=nodes[i+1];if(next){const v=vmul(vsub(next,n),1/3);n.ox=v.x;n.oy=v.y;}if(prev){const v=vmul(vsub(prev,n),1/3);n.ix=v.x;n.iy=v.y;}}
+  const tr=mkTraj(nodes);const before=snapshot();doc.elements.push(tr);
+  const a=findSnap(tr.nodes[0],tr,'start');if(a&&!a.fail)applySnap(tr,'start',a);
+  const b=findSnap(endNode(tr,'end'),tr,'end');if(b&&!b.fail)applySnap(tr,'end',b);
+  st.sel=new Set([tr.id]);commit(before,'Trajectory added');}
+
+/* ---------- node insert / delete ---------- */
+function rebindTo(el){/* re-project bindings of trajectories on curve el after its parametrisation changed */
+  for(const tr of doc.elements)if(tr.type==='traj')for(const w of ['start','end']){const b=tr[w];
+    if(b&&b.el===el.id&&b.t!==undefined){const nr=nearestOnPath(el,endNode(tr,w));b.t=nr.t;}}}
+function insertNode(el,p){const before=snapshot();const nr=nearestOnPath(el,p);const S=segsOf(el);let i=Math.floor(nr.t);
+  i=clamp(i,0,S.length-1);const u=clamp(nr.t-i,0.02,0.98);const [L,R]=bzSplit(...S[i],u);const n=el.nodes.length;
+  const A=el.nodes[i],B=el.nodes[(i+1)%n];
+  A.ox=L[1].x-A.x;A.oy=L[1].y-A.y;B.ix=R[2].x-B.x;B.iy=R[2].y-B.y;
+  const m=L[3];const nd={x:m.x,y:m.y,ix:L[2].x-m.x,iy:L[2].y-m.y,ox:R[1].x-m.x,oy:R[1].y-m.y,smooth:true};
+  el.nodes.splice(i+1,0,nd);rebindTo(el);st.sel=new Set([el.id]);st.selNode={id:el.id,i:i+1};commit(before,'Node inserted');}
+function deleteNode(){const sn=st.selNode;const el=byId(sn.id);if(!el)return;const min=el.closed?3:2;
+  if(el.nodes.length<=min){setMsg('A curve needs at least '+min+' nodes',true);return;}
+  const before=snapshot();
+  if(el.type==='traj'){if(sn.i===0)el.start=null;if(sn.i===el.nodes.length-1)el.end=null;}
+  el.nodes.splice(sn.i,1);rebindTo(el);st.selNode=null;commit(before,'Node deleted');}
+function deleteSelection(){if(!st.sel.size)return;const before=snapshot();
+  doc.elements=doc.elements.filter(e=>!st.sel.has(e.id));
+  for(const tr of doc.elements)if(tr.type==='traj')for(const w of ['start','end'])if(tr[w]&&st.sel.has(tr[w].el))tr[w]=null;
+  st.sel.clear();commit(before,'Deleted');}
+function duplicateSelection(){if(!st.sel.size)return;const before=snapshot();const map=new Map();const added=[];
+  for(const el of selEls()){const c=structuredClone(el);c.id=doc.nextId++;map.set(el.id,c.id);added.push(c);}
+  for(const c of added){affine(c,{a:1,b:0,c:0,d:1,e:20,f:20});
+    if(c.type==='traj')for(const w of ['start','end'])if(c[w])c[w]=map.has(c[w].el)?{...c[w],el:map.get(c[w].el)}:null;}
+  doc.elements.push(...added);st.sel=new Set(added.map(a=>a.id));commit(before,'Duplicated – drag the copy into place',{force:true});}
+function smoothPoly(pts,passes,closed){let a=pts.map(p=>({x:p.x,y:p.y}));const n=a.length;if(n<3)return a;
+  for(let k=0;k<passes;k++){const b=a.map(p=>({...p}));
+    for(let i=0;i<n;i++){if(!closed&&(i===0||i===n-1))continue;const p=a[(i-1+n)%n],q=a[(i+1)%n];
+      b[i]={x:0.25*p.x+0.5*a[i].x+0.25*q.x,y:0.25*p.y+0.5*a[i].y+0.25*q.y};}a=b;}
+  return a;}
+function simplifyEl(el){const n=el.nodes.length,closed=!!el.closed,min=closed?4:2;if(n<=min)return false;
+  const m=Math.max(min,Math.min(n-1,Math.round(n*0.7)));
+  let pts=flatten(el).pts;if(closed)pts=pts.slice(0,-1);
+  const N=200;let d=resample(pts,N,closed);
+  d=smoothPoly(d,Math.round((N/m)*(N/m)/6)+2,closed);   /* smoothing width ~ node spacing */
+  let q=resample(d,m,closed);
+  if(!closed){const a=el.nodes[0],b=el.nodes[n-1];q[0]={x:a.x,y:a.y};q[q.length-1]={x:b.x,y:b.y};}
+  el.nodes=crNodes(q,closed);rebindTo(el);return true;}
+function simplifySelected(){const els=selEls().filter(isPath);if(!els.length){setMsg('Select a trajectory, orbit or boundary to simplify',true);return;}
+  const before=snapshot();let c=0;for(const el of els)if(simplifyEl(el))c++;st.selNode=null;
+  if(!c){setMsg('Already as simple as it gets (delete nodes by hand if needed)');return;}
+  commit(before,'Simplified – press S again to simplify further');}
+function reverseSelected(){const els=selEls().filter(e=>e.type==='traj'||e.type==='cycle'||e.type==='boundary');if(!els.length)return;
+  const before=snapshot();for(const el of els){if(el.type==='traj')reversePath(el);else el.dir=-(el.dir||1);}commit(before,'Direction reversed');}
+
+/* =====================================================================
+   Panels
+   ===================================================================== */
+function row(label,html){return `<div class="row"><span>${label}</span>${html}</div>`;}
+function sel_(prop,val,opts){return `<select data-prop="${prop}">${opts.map(([v,l])=>`<option value="${v}"${v===val?' selected':''}>${l}</option>`).join('')}</select>`;}
+function num(prop,val,step=1,min='',max=''){return `<input type="number" data-prop="${prop}" value="${f2(val)}" step="${step}" min="${min}" max="${max}">`;}
+function bindingText(tr,w){const b=tr[w];if(!b)return 'free';const tg=byId(b.el);if(!tg)return 'free';
+  let s=elName(tg);if(b.port&&b.port!=='c')s+=' ('+({u1:'unstable sep.',u2:'unstable sep.',s1:'stable sep.',s2:'stable sep.',cm:'centre-manifold sep.',h1:'hyperbolic sep.',h2:'hyperbolic sep.'})[b.port]+')';
+  if(b.side)s+=b.side>0?', inside':', outside';return s;}
+function renderPanel(){const box=$('props');const els=selEls();let h='';
+  if(!els.length){h=`<h3>Drawing</h3><p class="hint">Pick a tool on the left. Trajectories are drawn in the direction of the flow; their ends snap to equilibria, separatrix terminals, periodic orbits and boundaries.</p>
+    <p class="hint">${doc.elements.length} element${doc.elements.length===1?'':'s'}. Mode: ${doc.structStable?'structurally stable (hyperbolic elements only)':'codimension-one elements allowed'}.</p>
+    ${row('Arrow size',`<input type="range" data-docprop="arrowScale" min="0.6" max="2.5" step="0.05" value="${AS()}"><span style="flex:0 0 34px">${AS().toFixed(2)}</span>`)}
+    ${row('Freehand smoothing',`<select data-pref="smoothing">${['low','medium','high'].map(v=>`<option${v===st.smoothing?' selected':''}>${v}</option>`).join('')}</select>`)}
+    <p class="hint">Tip: a free end of a trajectory snaps onto the free start of another one and joins them. Use Simplify (S) to straighten out wobbly hand-drawn curves.</p>`;}
+  else if(els.length>1){h=`<h3>${els.length} elements selected</h3><p class="hint">Drag to move; use the box handles to scale or rotate.</p>
+    <div class="btns">${els.some(isPath)?'<button data-act="simp">Simplify (S)</button>':''}<button data-act="dup">Duplicate</button><button data-act="del">Delete</button></div>`;}
+  else{const el=els[0];h=`<h3>${esc(elName(el))}</h3>`;
+    if(el.type==='eq'){const kinds=[['sink','Sink'],['source','Source'],['saddle','Saddle']];if(!doc.structStable||el.kind==='sn')kinds.push(['sn','Saddle-node']);
+      h+=row('Type',sel_('kind',el.kind,kinds));
+      if(el.kind==='sink'||el.kind==='source')h+=row('Rotation',sel_('spiral',el.spiral||'none',[['none','none (node)'],['ccw','focus, counter-clockwise'],['cw','focus, clockwise']]));
+      if(el.kind==='sn')h+=row('Transversally',sel_('trans',el.trans,[['stable','stable (node sector attracts)'],['unstable','unstable (node sector repels)']]));
+      if(el.kind==='saddle'||el.kind==='sn'){h+=row(el.kind==='saddle'?'Unstable dir. (°)':'Centre dir. (°)',num('angle',el.angle,5));
+        if(el.kind==='saddle')h+=row('Angle to stable (°)',num('spread',el.spread,5,10,170));
+        h+=row('Separatrix stub',num('len',el.len,2,10,120));}
+      h+=row('Position',`<span>${Math.round(el.x)}, ${Math.round(-el.y)}</span>`);}
+    else if(el.type==='traj'){h+=row('Start',`<span>${esc(bindingText(el,'start'))}</span>`)+row('End',`<span>${esc(bindingText(el,'end'))}</span>`);
+      h+=row('Line',sel_('weight',el.weight||'auto',[['auto','auto (thick for separatrices)'],['normal','normal'],['thick','thick']]));
+      h+=row('Arrows',num('arrows',el.arrows,1,0,6));if(el.arrows===1)h+=row('Arrow position',`<input type="range" data-prop="arrowPos" min="0.05" max="0.95" step="0.01" value="${el.arrowPos}">`);
+      h+=`<div class="btns"><button data-act="rev">Reverse (R)</button>${el.start?'<button data-act="detS">Detach start</button>':''}${el.end?'<button data-act="detE">Detach end</button>':''}</div>`;}
+    else if(el.type==='cycle'){const opts=[['stable','Stable'],['unstable','Unstable']];
+      if(!doc.structStable||el.stability.startsWith('semi'))opts.push(['semi-inner','Semi-stable: attracts inside'],['semi-outer','Semi-stable: attracts outside']);
+      h+=row('Stability',sel_('stability',el.stability,opts))+row('Arrows',num('arrows',el.arrows,1,0,8));
+      h+=`<div class="btns"><button data-act="rev">Reverse orientation (R)</button></div>`;}
+    else if(el.type==='boundary'){
+      if(el.closed){const f=flatten(el),a=atArc(f,0.1);const inflow=pointInPoly(f.pts,vadd(a.p,vmul(crossDirAt(el,a.tan),2)));
+        h+=row('Type',`<span>closed, ${inflow?'<b>inflow</b> (trapping region)':'<b>outflow</b>'}</span>`);}
+      else h+=row('Type','<span>open transversal</span>');
+      h+=row('Arrow spacing',num('spacing',el.spacing||36,2,10,400));
+      h+=`<div class="btns"><button data-act="rev">Flip crossing direction</button></div>`;}
+    else if(el.type==='label'){h+=row('Text',`<input type="text" data-prop="text" value="${esc(el.text)}">`)+row('Size',num('size',el.size||16,1,6,96));
+      h+=`<p class="hint">Inside <code>$…$</code>: <code>x_1</code>, <code>W^s</code>, <code>\\Gamma</code>, <code>\\alpha</code> … (TikZ gets the text verbatim)</p>`;}
+    h+=`<div class="btns">${isPath(el)?'<button data-act="simp">Simplify (S)</button>':''}<button data-act="dup">Duplicate</button><button data-act="del">Delete</button></div>`;}
+  box.innerHTML=h;}
+$('props').addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.pref){st[t.dataset.pref]=t.value;savePrefs();setMsg('Freehand smoothing: '+t.value);return;}
+  if(t.dataset.docprop){const before=st.textBefore||snapshot();st.textBefore=null;doc[t.dataset.docprop]=parseFloat(t.value);commit(before,'Arrow size changed');return;}
+  const prop=t.dataset.prop;if(!prop)return;const el=selEls()[0];if(!el)return;
+  const before=st.textBefore||snapshot();st.textBefore=null;
+  let v=t.type==='number'||t.type==='range'?parseFloat(t.value):t.value;if(t.type==='number'&&!isFinite(v))return;
+  if(prop==='arrows')v=clamp(Math.round(v),0,8);
+  if(prop==='text'){el.text=v;}else el[prop]=v;
+  if(prop==='kind'&&v==='sn'&&doc.structStable){el.kind='saddle';}
+  commit(before,'Changed '+prop);});
+$('props').addEventListener('input',e=>{const t=e.target,prop=t.dataset.prop;
+  if(t.dataset.docprop){if(!st.textBefore)st.textBefore=snapshot();doc[t.dataset.docprop]=parseFloat(t.value);if(t.nextElementSibling)t.nextElementSibling.textContent=(+t.value).toFixed(2);sceneG.innerHTML=renderScene(false);return;}
+  const el=selEls()[0];if(!el)return;
+  if(prop==='text'){if(!st.textBefore)st.textBefore=snapshot();el.text=t.value;st.valid=validate();sceneG.innerHTML=renderScene(false);renderOverlay();}
+  if(prop==='arrowPos'){if(!st.textBefore)st.textBefore=snapshot();el.arrowPos=parseFloat(t.value);sceneG.innerHTML=renderScene(false);}});
+$('props').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.act;if(!a)return;
+  if(a==='simp')simplifySelected();else if(a==='del')deleteSelection();else if(a==='dup')duplicateSelection();else if(a==='rev')reverseSelected();
+  else if(a==='detS'||a==='detE'){const el=selEls()[0];const before=snapshot();el[a==='detS'?'start':'end']=null;commit(before,'Detached');}});
+function renderProblems(){const v=st.valid;let h='<h3>Consistency</h3>';
+  if(!v.hard.length&&!v.warn.length)h+='<div class="none">✓ No problems found</div>';
+  else{h+='<ul>';for(const p of v.hard)h+=`<li class="bad" data-ids="${p.ids.join(',')}">${esc(p.msg)}</li>`;
+    for(const p of v.warn)h+=`<li class="warn" data-ids="${p.ids.join(',')}">${esc(p.msg)}</li>`;h+='</ul>';}
+  $('problems').innerHTML=h;}
+$('problems').addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;
+  st.sel=new Set(li.dataset.ids.split(',').map(Number).filter(id=>byId(id)));if(st.tool!=='select')st.tool='select';st.panelDirty=true;refresh();});
+
+/* =====================================================================
+   Keyboard
+   ===================================================================== */
+document.addEventListener('keydown',e=>{
+  const tag=(e.target.tagName||'').toLowerCase();if((tag==='input'&&e.target.type!=='checkbox')||tag==='textarea'||tag==='select'){if(e.key==='Escape')e.target.blur();return;}
+  const ctrl=e.ctrlKey||e.metaKey,k=e.key;
+  if(k===' '){st.space=true;svg.style.cursor='grab';e.preventDefault();return;}
+  if(ctrl&&(k==='z'||k==='Z')){e.preventDefault();e.shiftKey?redo():undo();return;}
+  if(ctrl&&(k==='y'||k==='Y')){e.preventDefault();redo();return;}
+  if(ctrl&&(k==='s'||k==='S')){e.preventDefault();saveNative(e.shiftKey);return;}
+  if(ctrl&&(k==='o'||k==='O')){e.preventDefault();openNative();return;}
+  if(ctrl&&(k==='a'||k==='A')){e.preventDefault();st.tool='select';st.sel=new Set(doc.elements.map(x=>x.id));st.panelDirty=true;refresh();return;}
+  if(ctrl&&(k==='d'||k==='D')){e.preventDefault();duplicateSelection();return;}
+  if(ctrl)return;
+  if(k==='Enter'&&st.pen){finishPen(true);return;}
+  if(k==='Escape'){if(st.pen){finishPen(false);return;}closeModals();if(st.tool!=='select')setTool('select');else{st.sel.clear();st.selNode=null;st.panelDirty=true;refresh();}return;}
+  if(k==='Delete'||k==='Backspace'){e.preventDefault();if(st.selNode)deleteNode();else deleteSelection();return;}
+  if(k.startsWith('Arrow')&&st.sel.size){e.preventDefault();const s=(e.shiftKey?10:1)/st.view.k;const dx=k==='ArrowLeft'?-s:k==='ArrowRight'?s:0,dy=k==='ArrowUp'?-s:k==='ArrowDown'?s:0;
+    const before=snapshot();for(const el of selEls())affine(el,{a:1,b:0,c:0,d:1,e:dx,f:dy});commit(before,'Nudged');return;}
+  const map={v:'select',h:'pan',t:'traj',p:'pen','1':'sink','2':'source','3':'saddle','4':'sn',c:'cycle',b:'boundary',l:'label'};
+  if(map[k.toLowerCase()]){setTool(map[k.toLowerCase()]);return;}
+  if(k==='r'||k==='R'){reverseSelected();return;}
+  if(k==='s'||k==='S'){simplifySelected();return;}
+  if(k==='+'||k==='='){zoomCenter(1.25);return;}if(k==='-'||k==='_'){zoomCenter(0.8);return;}
+  if(k==='0'){fit();return;}if(k==='?'){openModal('helpModal');return;}});
+document.addEventListener('keyup',e=>{if(e.key===' '){st.space=false;svg.style.cursor=st.tool==='pan'?'grab':st.tool==='select'?'default':'crosshair';}});
+
+/* =====================================================================
+   Files & export
+   ===================================================================== */
+function download(name,data,type){const blob=data instanceof Blob?data:new Blob([data],{type});const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+/* Save dialogs: the File System Access API (Chrome, Edge) lets the user pick folder and name;
+   other browsers fall back to a normal download into the Downloads folder. */
+let fileHandle=null,fileName='phase-portrait.phase.json';
+const baseName=()=>fileName.replace(/\.phase\.json$|\.json$/i,'')||'phase-portrait';
+function updateTitle(){$('fileLbl').textContent=fileHandle||fileName!=='phase-portrait.phase.json'?fileName:'';document.title=(fileHandle?fileName+' – ':'')+'Phase Portrait Sketcher';}
+async function pickTarget(name,desc,mime,ext){
+  if(window.showSaveFilePicker){try{return await window.showSaveFilePicker({suggestedName:name,types:[{description:desc,accept:{[mime]:[ext]}}]});}
+    catch(e){if(e&&e.name==='AbortError')return null;console.warn(e);}}
+  return 'download';}
+async function writeTarget(tg,name,blob){if(tg==='download'){download(name,blob);return 'your Downloads folder';}
+  const w=await tg.createWritable();await w.write(blob);await w.close();return tg.name;}
+async function saveNative(as){
+  try{const tg=(!as&&fileHandle)?fileHandle:await pickTarget(baseName()+'.phase.json','Phase portrait','application/json','.json');if(!tg)return;
+    const where=await writeTarget(tg,baseName()+'.phase.json',new Blob([JSON.stringify(doc,null,1)],{type:'application/json'}));
+    if(tg!=='download'){fileHandle=tg;fileName=tg.name;updateTitle();}setMsg('Saved to '+where);}
+  catch(e){setMsg('Save failed: '+e.message,true);}}
+async function openNative(){
+  if(window.showOpenFilePicker){try{const [h]=await window.showOpenFilePicker({types:[{description:'Phase portrait',accept:{'application/json':['.json']}}]});
+      const f=await h.getFile();loadDoc(JSON.parse(await f.text()));fileHandle=h;fileName=h.name;updateTitle();setMsg('Opened '+h.name);}
+    catch(e){if(e.name!=='AbortError')setMsg('Could not open file: '+e.message,true);}return;}
+  $('fileInput').click();}
+function pngBlob(scale){return new Promise(res=>{const {w,h,svg:sv}=exportSVG();const img=new Image();
+  img.onload=()=>{const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+    g.drawImage(img,0,0,c.width,c.height);c.toBlob(res,'image/png');};
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(sv);});}
+async function exportTo(kind){
+  const T={svg:['.svg','image/svg+xml','SVG image'],png:['.png','image/png','PNG image'],tex:['.tex','text/plain','LaTeX / TikZ']}[kind];
+  const name=baseName()+T[0];
+  try{const tg=await pickTarget(name,T[2],T[1],T[0]);if(!tg)return;
+    const blob=kind==='svg'?new Blob([exportSVG().svg],{type:T[1]}):kind==='tex'?new Blob([tikz()],{type:T[1]}):await pngBlob(3);
+    setMsg('Exported to '+await writeTarget(tg,name,blob));}
+  catch(e){setMsg('Export failed: '+e.message,true);}}
+function loadDoc(obj){if(!obj||!Array.isArray(obj.elements))throw new Error('not a phase-portrait file');
+  const before=snapshot();doc=Object.assign(newDoc(),obj);doc.nextId=Math.max(doc.nextId||1,...doc.elements.map(e=>e.id+1),1);
+  st.undo.push(before);st.redo=[];st.sel.clear();st.selNode=null;resetKeys();autosave();st.panelDirty=true;fit();refresh();}
+$('fileInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;
+  try{loadDoc(JSON.parse(await f.text()));fileHandle=null;fileName=f.name;updateTitle();setMsg('Opened '+f.name);}catch(err){setMsg('Could not open file: '+err.message,true);}e.target.value='';});
+function exportSVG(){const inner=renderScene(true);const tmp=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  tmp.style.cssText='position:absolute;left:-9999px;top:0;width:10px;height:10px';tmp.innerHTML=`<g>${inner}</g>`;document.body.appendChild(tmp);
+  let b;try{b=tmp.firstChild.getBBox();}catch(e){b={x:0,y:0,width:100,height:100};}tmp.remove();
+  const m=16,x=Math.floor(b.x-m),y=Math.floor(b.y-m),w=Math.ceil(b.width+2*m),h=Math.ceil(b.height+2*m);
+  return {w,h,svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}">\n<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>\n${inner}\n</svg>\n`};}
+function exportPNG(scale=3){const {w,h,svg:s}=exportSVG();const img=new Image();
+  img.onload=()=>{const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
+    g.drawImage(img,0,0,c.width,c.height);c.toBlob(bl=>download('phase-portrait.png',bl),'image/png');};
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s);}
+function printPDF(){const {svg:s}=exportSVG();$('print').innerHTML=s;setTimeout(()=>window.print(),50);}
+
+function tikz(){const S=50,X=p=>`(${(p.x/S).toFixed(3)},${(-p.y/S).toFixed(3)})`,W=w=>(w/S).toFixed(4)+'cm';
+  const arrowTip=(L,Wd)=>`Stealth[length=${(L*AS()/S).toFixed(3)}cm,width=${(Wd*AS()/S).toFixed(3)}cm]`;
+  const marks=(fr,rev,L=8,Wd=6.2)=>fr.length?`,postaction={decorate},decoration={markings,${fr.map(f=>`mark=at position ${f.toFixed(3)} with {\\arrow${rev?'reversed':''}{${arrowTip(L,Wd)}}}`).join(',')}}`:'';
+  const pathT=el=>{const Sg=segsOf(el);let s=X(Sg[0][0]);Sg.forEach((q,i)=>{const last=el.closed&&i===Sg.length-1;s+=` .. controls ${X(q[1])} and ${X(q[2])} .. ${last?'cycle':X(q[3])}`;});return s;};
+  const L=[];
+  L.push('% Phase portrait — generated by Phase Portrait Sketcher');
+  L.push('% \\usepackage{tikz}\\usetikzlibrary{arrows.meta,decorations.markings}');
+  L.push('\\definecolor{ppbnd}{HTML}{1A7F5A}');
+  L.push(`\\begin{tikzpicture}[x=1cm,y=1cm,line cap=round,line join=round,`);
+  L.push(`  traj/.style={line width=${W(W_TRAJ)}},sep/.style={line width=${W(W_SEP)}},cyc/.style={line width=${W(2.1)}},bnd/.style={line width=${W(1.5)},ppbnd}]`);
+  const els=doc.elements.slice().sort((a,b)=>ORDER[a.type]-ORDER[b.type]);
+  for(const el of els){
+    if(el.type==='boundary'){L.push(`\\draw[bnd] ${pathT(el)};`);
+      for(const m of boundaryMarks(el))L.push(`\\draw[ppbnd,line width=${W(1.1)},-{${arrowTip(7,5.5)}}] ${X(m.a)} -- ${X(vadd(m.h,vmul(m.n,3.5*AS())))};`);}
+    else if(el.type==='cycle'){const dash=el.stability==='unstable'?',dash pattern=on '+W(6)+' off '+W(4):'';
+      L.push(`\\draw[cyc${dash}${marks(arrowFracs(el.arrows,0.5),(el.dir||1)<0,10,7.5)}] ${pathT(el)};`);
+      if(el.stability.startsWith('semi')){const pts=offsetPoly(el,el.stability==='semi-inner'?4:-4);
+        L.push(`\\draw[line width=${W(1.1)},dash pattern=on ${W(3)} off ${W(3)}] ${pts.map(X).join(' -- ')} -- cycle;`);}}
+    else if(el.type==='traj'){L.push(`\\draw[${trajWidth(el)===W_SEP?'sep':'traj'}${marks(arrowFracs(el.arrows,el.arrowPos),false)}] ${pathT(el)};`);}
+    else if(el.type==='eq'){const c={x:el.x,y:el.y};
+      for(const q of eqPorts(el))if(q.dir){const r=portRole(el,q.port);const [a,b]=r.role==='start'?[c,q.pos]:[q.pos,c];
+        L.push(`\\draw[sep${marks([r.role==='start'?0.58:0.42],false,7.5,6)}] ${X(a)} -- ${X(b)};`);}
+      if((el.kind==='sink'||el.kind==='source')&&el.spiral&&el.spiral!=='none'){const pts=spiralPts(el);
+        L.push(`\\draw[line width=${W(1.1)}${marks([0.5],false,6.5,5)}] ${pts.map(X).join(' -- ')};`);}
+      const r=(R_EQ/S).toFixed(3);
+      if(el.kind==='sink')L.push(`\\fill ${X(c)} circle (${r});`);
+      else if(el.kind==='source')L.push(`\\filldraw[fill=white,line width=${W(1.3)}] ${X(c)} circle (${r});`);
+      else if(el.kind==='saddle')L.push(`\\fill ${X(c)} circle (${(2.6/S).toFixed(3)});`);
+      else if(el.kind==='sn'){const rr=((R_EQ+0.5)/S).toFixed(3);const mid=el.trans==='stable'?el.angle+180:el.angle;const a0=mid-90;
+        L.push(`\\filldraw[fill=white,line width=${W(1.3)}] ${X(c)} circle (${rr});`);
+        L.push(`\\fill ${X(c)} -- ++(${f2(a0)}:${rr}) arc[start angle=${f2(a0)},end angle=${f2(a0+180)},radius=${rr}] -- cycle;`);}}
+    else if(el.type==='label'){const fs=((el.size||16)/S*28.4527).toFixed(1);
+      L.push(`\\node[font=\\fontsize{${fs}pt}{${(fs*1.2).toFixed(1)}pt}\\selectfont] at ${X(el)} {${el.text}};`);}}
+  L.push('\\end{tikzpicture}');return L.join('\n');}
+
+/* =====================================================================
+   UI wiring
+   ===================================================================== */
+function openModal(id){$(id).hidden=false;}
+function closeModals(){for(const m of document.querySelectorAll('.modal'))m.hidden=true;}
+for(const b of document.querySelectorAll('[data-close]'))b.onclick=closeModals;
+for(const m of document.querySelectorAll('.modal'))m.addEventListener('pointerdown',e=>{if(e.target===m)closeModals();});
+function closeMenus(){for(const m of document.querySelectorAll('.menu'))m.classList.remove('open');}
+$('bExport').onclick=e=>{e.stopPropagation();const m=$('exportMenu'),r=$('bExport').getBoundingClientRect(),it=m.querySelector('.items');
+  it.style.top=(r.bottom+4)+'px';it.style.right=Math.max(4,innerWidth-r.right)+'px';m.classList.toggle('open');};
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu'))closeMenus();});
+for(const b of document.querySelectorAll('[data-exp]'))b.onclick=()=>{closeMenus();const t=b.dataset.exp;
+  if(!doc.elements.length){setMsg('Nothing to export yet',true);return;}
+  if(t==='svg'||t==='png'||t==='tex')exportTo(t);
+  else if(t==='tikz'){$('tikzText').value=tikz();openModal('tikzModal');}
+  else if(t==='print')printPDF();};
+$('tikzCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('tikzText').value);setMsg('TikZ copied');}catch(e){$('tikzText').select();document.execCommand('copy');}};
+$('tikzDl').onclick=()=>exportTo('tex');
+$('bNew').onclick=()=>{if(doc.elements.length&&!confirm('Start a new drawing? (Undo can bring the old one back.)'))return;const before=snapshot();doc=newDoc();doc.structStable=$('cSS').checked;
+  st.undo.push(before);st.sel.clear();resetKeys();autosave();fileHandle=null;fileName='phase-portrait.phase.json';updateTitle();st.panelDirty=true;refresh();};
+$('bOpen').onclick=openNative;$('bSave').onclick=()=>saveNative(false);$('bSaveAs').onclick=()=>saveNative(true);
+$('bUndo').onclick=undo;$('bRedo').onclick=redo;
+$('bZoomIn').onclick=()=>zoomCenter(1.25);$('bZoomOut').onclick=()=>zoomCenter(0.8);$('bFit').onclick=fit;
+$('cGrid').onchange=e=>{st.grid=e.target.checked;savePrefs();refresh();};
+$('cSnapGrid').onchange=e=>{st.snapGrid=e.target.checked;savePrefs();};
+$('cMagnet').onchange=e=>{st.magnet=e.target.checked;savePrefs();};
+$('cRefuse').onchange=e=>{st.refuse=e.target.checked;savePrefs();setMsg(st.refuse?'Edits that create inconsistencies will be refused':'Inconsistencies will only be flagged');};
+$('cSS').onchange=e=>{const before=snapshot();doc.structStable=e.target.checked;if(doc.structStable&&st.tool==='sn')st.tool='select';
+  st.undo.push(before);st.redo=[];autosave();st.panelDirty=true;setMsg(doc.structStable?'Structural stability enforced':'Codimension-one elements enabled (saddle-node, semi-stable orbits, saddle connections)');refresh();};
+$('bHelp').onclick=()=>openModal('helpModal');
+$('bExample').onclick=()=>{closeModals();loadDoc(exampleDoc());setMsg('Example loaded');};
+function savePrefs(){try{localStorage.setItem('phaseplane-prefs2',JSON.stringify({grid:st.grid,snapGrid:st.snapGrid,magnet:st.magnet,refuse:st.refuse,smoothing:st.smoothing}));}catch(e){}}
+function loadPrefs(){try{const p=JSON.parse(localStorage.getItem('phaseplane-prefs2')||'null');if(p){Object.assign(st,p);}}catch(e){}
+  $('cGrid').checked=st.grid;$('cSnapGrid').checked=st.snapGrid;$('cMagnet').checked=st.magnet;$('cRefuse').checked=st.refuse;}
+function layoutTools(){const t=$('tools');t.classList.remove('two');if(t.scrollHeight>t.clientHeight+1)t.classList.add('two');}
+window.addEventListener('resize',()=>{layoutTools();schedule();});
+for(const c of document.querySelectorAll('#topbar input[type=checkbox]'))c.addEventListener('change',()=>c.blur());
+
+function exampleDoc(){const save=doc;doc=newDoc();
+  const cyc=mkCycle(ellipseNodes(0,0,270,175,8),'unstable');cyc.dir=-1;doc.elements.push(cyc);
+  const sd=mkEq('saddle',0,0);sd.len=30;const s1=mkEq('sink',-150,0),s2=mkEq('sink',150,0);s1.spiral='ccw';s2.spiral='ccw';doc.elements.push(sd,s1,s2);
+  const T=(pts)=>mkTraj(crNodes(pts,false));
+  const a=T([{x:30,y:0},{x:90,y:-12},{x:150,y:0}]);a.start={el:sd.id,port:'u1'};a.end={el:s2.id,port:'c'};
+  const b=T([{x:-30,y:0},{x:-90,y:12},{x:-150,y:0}]);b.start={el:sd.id,port:'u2'};b.end={el:s1.id,port:'c'};
+  const c=T([{x:103,y:-160},{x:20,y:-125},{x:0,y:-30}]);c.start={el:cyc.id,t:6.5,side:1};c.end={el:sd.id,port:'s1'};
+  const d=T([{x:-103,y:160},{x:-20,y:125},{x:0,y:30}]);d.start={el:cyc.id,t:2.5,side:1};d.end={el:sd.id,port:'s2'};
+  const e=T([{x:249,y:67},{x:232,y:8},{x:150,y:0}]);e.start={el:cyc.id,t:0.5,side:1};e.end={el:s2.id,port:'c'};
+  const f=T([{x:-249,y:-67},{x:-232,y:-8},{x:-150,y:0}]);f.start={el:cyc.id,t:4.5,side:1};f.end={el:s1.id,port:'c'};
+  doc.elements.push(a,b,c,d,e,f);
+  const L1=mkLabel(0,-215,'$\\Gamma$');const L2=mkLabel(22,-62,'$W^s(p)$');L2.size=14;const L3=mkLabel(-14,16,'$p$');L3.size=14;doc.elements.push(L1,L2,L3);
+  resolveAll();const out=doc;doc=save;return JSON.parse(JSON.stringify(out));}
+
+/* ---------- start ---------- */
+buildTools();layoutTools();loadPrefs();
+try{const s=localStorage.getItem('phaseplane-autosave');if(s){const o=JSON.parse(s);if(o&&Array.isArray(o.elements))doc=Object.assign(newDoc(),o);}}catch(e){}
+st.view={k:0.8,x:-svg.clientWidth/2/0.8,y:-svg.clientHeight/2/0.8};
+if(!doc.arrowScale)doc.arrowScale=1.3;
+resetKeys();st.panelDirty=true;refresh();updateTitle();if(doc.elements.length)fit();
+</script>
+</body>
+</html>
