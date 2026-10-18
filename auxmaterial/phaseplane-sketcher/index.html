@@ -74,6 +74,10 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
 .modal textarea{width:100%;height:340px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
 .modal table{border-collapse:collapse}
 .modal td{padding:2px 10px 2px 0;vertical-align:top}
+#libList{list-style:none;padding:0;margin:10px 0 0}
+#libList li{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+#libList li span{flex:1;font-weight:600}
+#libList small{color:var(--muted)}
 #print{display:none}
 @media print{
   #app,.modal{display:none!important}
@@ -91,6 +95,7 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
     <button id="bOpen" title="Open native .phase.json file">Open…</button>
     <button id="bSave" title="Save the native .phase.json file (Ctrl+S)">Save</button>
     <button id="bSaveAs" title="Save under a new name / in another folder (Ctrl+Shift+S)">Save as…</button>
+    <button id="bLib" title="Drawings stored inside this browser (useful on iPad)">Library…</button>
     <span id="fileLbl" style="color:var(--muted);margin-left:2px"></span></span>
     <span class="sep"></span>
     <span class="grp"><button id="bUndo" title="Undo (Ctrl+Z)">↶</button>
@@ -140,13 +145,27 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
 </div>
 
 <div id="print"></div>
-<input type="file" id="fileInput" accept=".json,application/json" hidden>
+<input type="file" id="fileInput" hidden>
 
 <div class="modal" id="tikzModal" hidden><div class="box">
   <h2>TikZ export</h2>
   <p class="hint">Needs <code>\usepackage{tikz}</code> and <code>\usetikzlibrary{arrows.meta,decorations.markings}</code>. 50 px of the drawing = 1 cm; change the <code>x</code>/<code>y</code> options to rescale. Label text is passed through verbatim, so <code>$W^s$</code> works.</p>
   <textarea id="tikzText" spellcheck="false"></textarea>
   <div class="btns"><button id="tikzCopy">Copy</button><button id="tikzDl">Save .tex…</button><button data-close>Close</button></div>
+</div></div>
+
+<div class="modal" id="shareModal" hidden><div class="box" style="max-width:440px">
+  <h2>Save <span id="shareName"></span></h2>
+  <p class="hint" id="shareHint"></p>
+  <div class="btns"><button id="shareBtn">Share…</button><button id="shareDl">Download</button><button data-close>Cancel</button></div>
+</div></div>
+
+<div class="modal" id="libModal" hidden><div class="box" style="max-width:560px">
+  <h2>Library (stored in this browser)</h2>
+  <p class="hint">Drawings kept here survive reloads but live only in this browser on this device. Use Save for real files.</p>
+  <div class="row"><span>Name</span><input type="text" id="libName"><button id="libStore">Store current drawing</button></div>
+  <ul id="libList"></ul>
+  <div class="btns"><button data-close>Close</button></div>
 </div></div>
 
 <div class="modal" id="helpModal" hidden><div class="box">
@@ -1097,18 +1116,47 @@ async function pickTarget(name,desc,mime,ext){
   if(window.showSaveFilePicker){try{return await window.showSaveFilePicker({suggestedName:name,types:[{description:desc,accept:{[mime]:[ext]}}]});}
     catch(e){if(e&&e.name==='AbortError')return null;console.warn(e);}}
   return 'download';}
-async function writeTarget(tg,name,blob){if(tg==='download'){download(name,blob);return 'your Downloads folder';}
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const ANDROID=/Android/i.test(navigator.userAgent),MOBILE=IOS||ANDROID;
+const SHARE_HINT=IOS?'On iPad/iPhone, web pages cannot open a folder dialog. Tap <b>Share…</b> and choose <b>Save to Files</b> to pick a folder (iCloud Drive, On My iPad, …). <b>Download</b> puts it into the browser\'s own downloads instead.'
+  :'On Android, web pages cannot open a folder dialog. <b>Download</b> saves the file into the <b>Downloads</b> folder, where <b>Open…</b> can find it again. <b>Share…</b> sends it to another app instead, e.g. Google Drive, Files or e-mail.';
+let pendingShare=null;
+function shareFile(){const {name,blob}=pendingShare;return new File([blob],name,{type:blob.type||'application/octet-stream'});}
+function offerShare(name,blob){pendingShare={name,blob};$('shareName').textContent=name;$('shareHint').innerHTML=SHARE_HINT;
+  let ok=false;try{ok=!!(navigator.canShare&&navigator.canShare({files:[shareFile()]}));}catch(e){}
+  $('shareBtn').hidden=!ok;openModal('shareModal');}
+async function writeTarget(tg,name,blob){if(tg==='download'){if(MOBILE){offerShare(name,blob);return 'the share sheet';}download(name,blob);return 'your Downloads folder';}
   const w=await tg.createWritable();await w.write(blob);await w.close();return tg.name;}
 async function saveNative(as){
   try{const tg=(!as&&fileHandle)?fileHandle:await pickTarget(baseName()+'.phase.json','Phase portrait','application/json','.json');if(!tg)return;
     const where=await writeTarget(tg,baseName()+'.phase.json',new Blob([JSON.stringify(doc,null,1)],{type:'application/json'}));
-    if(tg!=='download'){fileHandle=tg;fileName=tg.name;updateTitle();}setMsg('Saved to '+where);}
+    if(tg!=='download'){fileHandle=tg;fileName=tg.name;updateTitle();}if(where!=='the share sheet')setMsg('Saved to '+where);}
   catch(e){setMsg('Save failed: '+e.message,true);}}
 async function openNative(){
   if(window.showOpenFilePicker){try{const [h]=await window.showOpenFilePicker({types:[{description:'Phase portrait',accept:{'application/json':['.json']}}]});
       const f=await h.getFile();loadDoc(JSON.parse(await f.text()));fileHandle=h;fileName=h.name;updateTitle();setMsg('Opened '+h.name);}
     catch(e){if(e.name!=='AbortError')setMsg('Could not open file: '+e.message,true);}return;}
   $('fileInput').click();}
+$('shareBtn').onclick=async()=>{try{await navigator.share({files:[shareFile()]});closeModals();setMsg('Shared '+pendingShare.name);}
+  catch(e){if(e.name!=='AbortError')setMsg('Share failed: '+e.message,true);}};
+$('shareDl').onclick=()=>{download(pendingShare.name,pendingShare.blob);closeModals();setMsg('Downloaded '+pendingShare.name);};
+/* library of drawings kept in localStorage */
+const LIBKEY='phaseplane-library';
+function libGet(){try{return JSON.parse(localStorage.getItem(LIBKEY)||'{}')||{};}catch(e){return {};}}
+function renderLib(){const L=libGet();const names=Object.keys(L).sort((a,b)=>L[b].date-L[a].date);
+  $('libList').innerHTML=names.length?names.map(n=>`<li><span>${esc(n)}</span><small>${new Date(L[n].date).toLocaleString()}</small><button data-lopen="${esc(n)}">Open</button><button data-ldel="${esc(n)}">Delete</button></li>`).join('')
+    :'<li class="hint">Nothing stored yet.</li>';}
+$('bLib').onclick=()=>{$('libName').value=baseName();renderLib();openModal('libModal');};
+$('libStore').onclick=()=>{const n=$('libName').value.trim()||'untitled';const L=libGet();
+  if(L[n]&&!confirm('Replace the stored drawing “'+n+'”?'))return;L[n]={date:Date.now(),doc:snapshot()};
+  try{localStorage.setItem(LIBKEY,JSON.stringify(L));renderLib();setMsg('Stored “'+n+'” in this browser');}catch(e){setMsg('Browser storage is full or unavailable',true);}};
+$('libList').addEventListener('click',e=>{const o=e.target.dataset.lopen,d=e.target.dataset.ldel;const L=libGet();
+  if(o!=null&&L[o]){try{loadDoc(JSON.parse(L[o].doc));fileHandle=null;fileName=o+'.phase.json';updateTitle();closeModals();setMsg('Opened “'+o+'” from the library');}catch(err){setMsg('Could not open: '+err.message,true);}}
+  if(d!=null&&confirm('Delete “'+d+'” from this browser?')){delete L[d];try{localStorage.setItem(LIBKEY,JSON.stringify(L));}catch(err){}renderLib();}});
+/* drag a .phase.json file onto the drawing to open it */
+$('stage').addEventListener('dragover',e=>{e.preventDefault();});
+$('stage').addEventListener('drop',async e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(!f)return;
+  try{loadDoc(JSON.parse(await f.text()));fileHandle=null;fileName=f.name;updateTitle();setMsg('Opened '+f.name);}catch(err){setMsg('Could not open file: '+err.message,true);}});
 function pngBlob(scale){return new Promise(res=>{const {w,h,svg:sv}=exportSVG();const img=new Image();
   img.onload=()=>{const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
     g.drawImage(img,0,0,c.width,c.height);c.toBlob(res,'image/png');};
@@ -1118,7 +1166,7 @@ async function exportTo(kind){
   const name=baseName()+T[0];
   try{const tg=await pickTarget(name,T[2],T[1],T[0]);if(!tg)return;
     const blob=kind==='svg'?new Blob([exportSVG().svg],{type:T[1]}):kind==='tex'?new Blob([tikz()],{type:T[1]}):await pngBlob(3);
-    setMsg('Exported to '+await writeTarget(tg,name,blob));}
+    const where=await writeTarget(tg,name,blob);if(where!=='the share sheet')setMsg('Exported to '+where);}
   catch(e){setMsg('Export failed: '+e.message,true);}}
 function loadDoc(obj){if(!obj||!Array.isArray(obj.elements))throw new Error('not a phase-portrait file');
   const before=snapshot();doc=Object.assign(newDoc(),obj);doc.nextId=Math.max(doc.nextId||1,...doc.elements.map(e=>e.id+1),1);

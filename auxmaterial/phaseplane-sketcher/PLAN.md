@@ -42,6 +42,20 @@ This file records the requirements as given, the feasibility assessment, the dec
 ### Round 5
 > Create a git commit, add a Readme.md with the help and a separate plan.md that shows the instructions and any further summary that enables regeneration by (eg) another AI instance.
 
+### Round 6
+> Just tested on ipad (firefox): the "save as" does not open any folder, and the "open" only shows the "files" area, not giving access to the firefox downloads sandbox. Is there anyway I can load a file that I have saved?
+
+Response: on iOS all browsers use WebKit, which has no File System Access API, and Firefox keeps its downloads in its own app area. Changes:
+* Saves and exports on iOS offer the share sheet (*Save to Files* lets the user choose a folder) or a plain download.
+* A browser-local *Library* of named drawings.
+* The `accept` filter was removed from the file input, so iOS does not grey out `.phase.json` files.
+* Drag-and-drop opening.
+
+### Round 7
+> Ok, also create similar fallbacks for android devices, update plan and readme and commit the updates.
+
+Response: Android browsers have no File System Access API either. Downloads go to the shared Downloads folder, which the system file picker behind *Open…* can browse. The iOS save box is now used on Android too (`MOBILE = IOS || ANDROID`), with Android-specific wording. *Download* is the main route there; *Share…* (Drive, Files, e-mail) is shown only if `navigator.canShare({files})` is true.
+
 ---
 
 ## 2. Feasibility assessment (agreed scope)
@@ -271,6 +285,9 @@ Bindings (trajectory ends):
   * Labels: `\node[font=\fontsize{..}{..}\selectfont]` with the raw text.
   * Tested with pdflatex.
 * **File dialogs:** `showSaveFilePicker` / `showOpenFilePicker` (Chrome and Edge; works on `file://`). The handle is kept, so later Saves overwrite the same file. Other browsers fall back to an `<a download>` link (Downloads folder) and an `<input type=file>`. For PNG, the picker is opened **before** rendering, so the user-activation requirement is still met.
+* **iOS and Android** (`IOS`: user agent, or `MacIntel` with touch points > 1; `ANDROID`: `/Android/` in the user agent; `MOBILE = IOS || ANDROID`): when no save picker exists, `writeTarget` opens `#shareModal`. Its hint text `SHARE_HINT` depends on the platform. Its *Share…* button calls `navigator.share({files:[File]})`, a fresh user gesture, so the activation requirement is met even after an asynchronous PNG render. The *Download* button falls back to `<a download>`.
+* **Library:** `localStorage['phaseplane-library']` holds `{name: {date, doc: JSON string}}`; managed in `#libModal`.
+* **Drag-and-drop:** a file dropped on `#stage` is loaded with `loadDoc`.
 
 ---
 
