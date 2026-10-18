@@ -1334,8 +1334,13 @@ function closeModals(){for(const m of document.querySelectorAll('.modal'))m.hidd
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=closeModals;
 for(const m of document.querySelectorAll('.modal'))m.addEventListener('pointerdown',e=>{if(e.target===m)closeModals();});
 function closeMenus(){for(const m of document.querySelectorAll('.menu'))m.classList.remove('open');}
-$('bExport').onclick=e=>{e.stopPropagation();const m=$('exportMenu'),r=$('bExport').getBoundingClientRect(),it=m.querySelector('.items');
-  it.style.top=(r.bottom+4)+'px';it.style.right=Math.max(4,innerWidth-r.right)+'px';m.classList.toggle('open');};
+$('bExport').onclick=e=>{e.stopPropagation();const m=$('exportMenu');m.classList.toggle('open');if(m.classList.contains('open'))placeMenu(m);};
+function placeMenu(m){/* keep the dropdown inside the window wherever the (possibly wrapped) button sits */
+  const r=m.querySelector('button').getBoundingClientRect(),it=m.querySelector('.items');
+  it.style.right='auto';it.style.maxWidth=(innerWidth-8)+'px';it.style.maxHeight=Math.max(120,innerHeight-r.bottom-12)+'px';it.style.overflowY='auto';
+  const w=it.offsetWidth;let left=r.right-w;if(left<4)left=r.left;left=Math.max(4,Math.min(left,innerWidth-w-4));
+  it.style.left=left+'px';it.style.top=(r.bottom+4)+'px';}
+window.addEventListener('resize',()=>{const m=$('exportMenu');if(m.classList.contains('open'))placeMenu(m);});
 document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu'))closeMenus();});
 for(const b of document.querySelectorAll('[data-exp]'))b.onclick=()=>{closeMenus();const t=b.dataset.exp;
   if(!doc.elements.length){setMsg('Nothing to export yet',true);return;}

@@ -79,6 +79,11 @@ Response:
 * A direct vector-PDF writer was added: *PDF file, cropped to drawing*. The page is the drawing's bounding box.
 * Print now has two variants: page = drawing (`@page{size:W H; margin:0}`) and full page.
 
+### Round 11
+> A bug with the export dialog: if the manu is folded into two rows the export dialog can be on the very left of the screen or window (eg, on ipad). When the dropdown menu opens it is outside of the window and the text is invisible.
+
+Fix: `placeMenu()` measures the opened dropdown and positions it so that it stays inside the window.
+
 ---
 
 ## 2. Feasibility assessment (agreed scope)
@@ -114,7 +119,10 @@ Response:
   * rows `auto minmax(0,1fr) 26px`; columns `auto 1fr 290px`.
   * The top bar uses `flex-wrap: wrap`, with related controls grouped in `.grp` spans so they wrap together.
   * The tool palette gets class `.two` (a 2-column grid) when its `scrollHeight` exceeds its `clientHeight`. This is checked in `layoutTools()` at startup and on window resize.
-  * The Export dropdown uses `position: fixed`, positioned from the button's bounding rect, so the side pane cannot cover it.
+  * The Export dropdown uses `position: fixed`, so the side pane cannot cover it. `placeMenu()` positions it after opening, and again on resize:
+    * by default its right edge is aligned with the button's right edge;
+    * if that would cross the left window edge, its left edge is aligned with the button's left edge instead;
+    * finally it is clamped to [4, innerWidth − width − 4] horizontally, and its max-height is limited to the space below the button (scrolls if needed).
 * **Main SVG** `#svg` has three layers:
   * `#gridLayer`: screen coordinates, not exported.
   * `#world > #scene`: world coordinates, with a `translate(-x·k, -y·k) scale(k)` transform.
