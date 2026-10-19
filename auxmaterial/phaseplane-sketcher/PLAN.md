@@ -84,6 +84,26 @@ Response:
 
 Fix: `placeMenu()` measures the opened dropdown and positions it so that it stays inside the window.
 
+### Round 12
+> As exporting and importing files is tricky on iOS or Android tablets: is it possible to copy a rectangle to clipboard as an image that can be inserted elsewhere (eg, note-taking applications)? The copy&paste between instances or sketches would be native format, though. Is there a simple user interface that enables both? Offer options first.
+
+Options offered:
+* What goes on the clipboard:
+  * A: one Copy with both PNG and JSON;
+  * B: separate *Copy* and *Copy as image*;
+  * C: A plus a setting.
+* How the area is chosen:
+  * 1: the current selection;
+  * 2: a Region tool with a floating bar;
+  * 3: a persistent export frame.
+
+Recommendation **B + 1 + 2**, with PNG 3× on white.
+
+### Round 13
+> Yes, the recommendation makes sense. Update the file, the plan/readme and commit.
+
+Implemented as B + 1 + 2 (§3.11).
+
 ---
 
 ## 2. Feasibility assessment (agreed scope)
@@ -333,6 +353,35 @@ Bindings (trajectory ends):
   * **Import** (`#libInput`, multiple files) accepts library files or single drawings and validates that each `doc` parses with an `elements` array. Identical entries are skipped; name clashes get ` (2)`, ` (3)`, ….
   * Storage scope: per origin (see Round 8).
 * **Drag-and-drop:** a file dropped on `#stage` is loaded with `loadDoc`.
+
+### 3.11 Clipboard
+
+* **Native sketch:**
+  * `clipText(els)` serialises `{format:'phaseplane-clip', version:1, arrowScale, elements}`. Trajectory bindings to elements outside the copied set are set to null.
+  * The text is also stored in `localStorage['phaseplane-clipboard']`, which serves as an internal clipboard per origin.
+* **Copying:**
+  * Keyboard: the document `copy`/`cut` events set `text/plain` synchronously. This is reliable and needs no permission.
+  * Button: `navigator.clipboard.writeText`. If that fails, the copy lives in the browser only.
+* **Pasting:**
+  * Keyboard: the document `paste` event reads `text/plain`.
+  * Button: `navigator.clipboard.readText()` (Safari shows its "Paste" bubble).
+  * Either one falls back to the internal clipboard if the system text is not a sketch.
+  * `parseClip` accepts clip payloads and whole `phaseplane-sketch` documents.
+  * `pasteClip` gives new ids, remaps bindings inside the set, then positions the paste:
+    * if the copied area is visible, it is offset by (20, 20) repeatedly while any pasted element would coincide (same type, same bounding box) with an existing one;
+    * otherwise it is moved to the view centre.
+  * The pasted elements are selected and committed with `{force:true}` (never refused).
+  * Typing in inputs is not intercepted (`isTyping`).
+* **Image:**
+  * `copyImage(rect?)` renders `exportSVG({only:selectedIds})`, or the whole drawing, or `exportSVG({rect})` for a region (viewBox = rectangle, so content is clipped).
+  * The result goes through `pngBlob(3, src)`.
+  * `navigator.clipboard.write([new ClipboardItem({'image/png': promise})])`: the promise is passed directly so that Safari keeps the user activation.
+  * Fallback: `offerShare` on mobile, PNG download on desktop.
+* **Region tool** (`G`):
+  * The drag produces `st.region` (world rect), drawn in the overlay.
+  * `#regionBar` is an absolutely positioned div in `#stage`, placed below the rectangle's right corner, flipped above it or clamped to stay visible.
+  * *Copy sketch* takes the elements whose bounding box lies fully inside the rectangle.
+* **UI:** top-bar group Copy / Paste / Copy image; key `I` = copy image. `Ctrl+Shift+C` was avoided because browsers reserve it for developer tools.
 
 ---
 

@@ -78,6 +78,8 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
 #libList li{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
 #libList li span{flex:1;font-weight:600}
 #libList small{color:var(--muted)}
+#regionBar{position:absolute;display:flex;gap:4px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.15);z-index:5}
+#regionBar[hidden]{display:none}
 #print{display:none}
 @media print{
   #app,.modal{display:none!important}
@@ -100,6 +102,10 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
     <span class="sep"></span>
     <span class="grp"><button id="bUndo" title="Undo (Ctrl+Z)">↶</button>
     <button id="bRedo" title="Redo (Ctrl+Shift+Z)">↷</button></span>
+    <span class="sep"></span>
+    <span class="grp"><button id="bCopy" title="Copy the selection as a sketch (Ctrl/⌘+C)">Copy</button>
+    <button id="bPaste" title="Paste a copied sketch (Ctrl/⌘+V)">Paste</button>
+    <button id="bCopyImg" title="Copy the selection – or the whole drawing – as an image for other apps (I)">Copy image</button></span>
     <span class="sep"></span>
     <span class="grp"><button id="bZoomOut" title="Zoom out (−)">−</button>
     <span id="zoomLbl" style="min-width:44px;text-align:center">100%</span>
@@ -136,6 +142,7 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
       <g id="world"><g id="scene"></g></g>
       <g id="overlay"></g>
     </svg>
+    <div id="regionBar" hidden><button data-rg="img">Copy image</button><button data-rg="sk">Copy sketch</button><button data-rg="x" title="Cancel (Esc)">✕</button></div>
   </main>
 
   <aside id="side">
@@ -182,6 +189,7 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
   <tr><td><b>Equilibria</b> <kbd>1</kbd>–<kbd>4</kbd></td><td>Sink, source, saddle (4 terminals: unstable separatrices point out, stable ones point in), saddle-node (only when structural stability is off).</td></tr>
   <tr><td><b>Periodic orbit</b> <kbd>C</kbd></td><td>Click for a default ellipse, or draw a closed loop. Stable = solid, unstable = dashed, semi-stable = solid with a dashed shadow on the repelling side.</td></tr>
   <tr><td><b>Boundary</b> <kbd>B</kbd></td><td>Draw a curve the flow crosses in one direction (shown by small arrows). A closed curve is created as inflowing (trapping region); flip it in the properties panel.</td></tr>
+  <tr><td><b>Region</b> <kbd>G</kbd></td><td>Drag a rectangle; a small bar offers <b>Copy image</b> (exactly that rectangle, as a picture for other apps) and <b>Copy sketch</b> (the elements lying completely inside, for pasting into this tool).</td></tr>
   <tr><td><b>Label</b> <kbd>L</kbd></td><td>Click to place text. Inside <code>$…$</code>: <code>_</code> subscript, <code>^</code> superscript, <code>\alpha</code> etc.</td></tr>
   </table>
   <h4>Editing</h4>
@@ -192,6 +200,8 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
   <tr><td>Keys</td><td><kbd>Del</kbd> delete, <kbd>Ctrl+D</kbd> duplicate (never refused, so you can drag the copy into place), <kbd>S</kbd> simplify, <kbd>R</kbd> reverse trajectory/orbit, <kbd>Ctrl+A</kbd> select all, arrow keys nudge, <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Shift+Z</kbd> undo/redo, <kbd>Esc</kbd> back to Select.</td></tr>
   <tr><td>View</td><td>Mouse wheel zooms around the cursor; pan with <kbd>Space</kbd>+drag, the middle mouse button or the hand tool <kbd>H</kbd>; <kbd>0</kbd> fits the drawing.</td></tr>
   </table>
+  <h4>Copy &amp; paste</h4>
+  <p><b>Copy</b> / <kbd>Ctrl/⌘+C</kbd> copies the selection as a sketch, <kbd>Ctrl/⌘+X</kbd> cuts, <b>Paste</b> / <kbd>Ctrl/⌘+V</kbd> inserts it (selected and slightly offset, attachments among the copied elements kept). This works between tabs and drawings; a copy is also kept in the browser, so pasting still works where the browser refuses to read the clipboard. <b>Copy image</b> / <kbd>I</kbd> puts a PNG of the selection (or of the whole drawing if nothing is selected) on the clipboard for note-taking and other apps; on iPad/Android it falls back to the share sheet if the clipboard refuses.</p>
   <h4>Files</h4>
   <p><b>Save</b> / <b>Save as…</b> / <b>Open…</b> and the exports open a file dialog in Chrome and Edge (folder and name of your choice; Save then keeps writing to the same file). Safari and Firefox do not offer this to web pages, so there files go to the Downloads folder. Separatrices (trajectories attached to a saddle or saddle-node terminal) are drawn thicker; override per trajectory with <i>Line</i>. Arrow size is a drawing-wide setting in the right panel.</p>
   <h4>Consistency checks</h4>
@@ -632,8 +642,8 @@ function boundaryMarks(el){const fl=flatten(el),out=[];if(fl.total<1)return out;
     const q=AS();out.push({a:vsub(a.p,vmul(nn,5*q)),b:vadd(a.p,vmul(nn,6*q)),h:vadd(a.p,vmul(nn,9*q)),n:nn,p:a.p});}
   return out;}
 const ORDER={boundary:0,cycle:1,traj:2,eq:3,label:4};
-function renderScene(exp){let s='';
-  const els=doc.elements.slice().sort((a,b)=>ORDER[a.type]-ORDER[b.type]);
+function renderScene(exp,only){let s='';
+  const els=doc.elements.filter(e=>!only||only.has(e.id)).sort((a,b)=>ORDER[a.type]-ORDER[b.type]);
   for(const el of els)s+=renderElement(el,exp);return s;}
 
 const w2s=p=>({x:(p.x-st.view.x)*st.view.k,y:(p.y-st.view.y)*st.view.k});
@@ -677,6 +687,14 @@ function renderOverlay(){const k=st.view.k;let s='';
         s+=`<rect data-h="sc:${nm}" x="${f2(x-4.5)}" y="${f2(y-4.5)}" width="9" height="9" fill="${SELC}" style="cursor:${cur}-resize"/>`;}
       s+=`<path d="M${f2(xm)} ${f2(y0)}L${f2(xm)} ${f2(y0-22)}" stroke="${SELC}"/><circle data-h="rot" cx="${f2(xm)}" cy="${f2(y0-26)}" r="5" fill="#fff" stroke="${SELC}" stroke-width="1.5" style="cursor:grab"/>`;}}}
   const dr=st.drag;
+  {const rg=dr&&dr.type==='region'?{x:Math.min(dr.p0.x,dr.p1.x),y:Math.min(dr.p0.y,dr.p1.y),w:Math.abs(dr.p1.x-dr.p0.x),h:Math.abs(dr.p1.y-dr.p0.y)}:st.region;
+    const bar=$('regionBar');
+    if(rg&&st.tool==='region'){const A=w2s(rg),B=w2s({x:rg.x+rg.w,y:rg.y+rg.h});
+      s+=`<rect x="${f2(A.x)}" y="${f2(A.y)}" width="${f2(B.x-A.x)}" height="${f2(B.y-A.y)}" fill="${SELC}" fill-opacity=".06" stroke="${SELC}" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+      if(st.region&&!(dr&&dr.type==='region')){bar.hidden=false;const W=svg.clientWidth,H=svg.clientHeight,bw=bar.offsetWidth,bh=bar.offsetHeight;
+        let bx=B.x-bw,by=B.y+6;if(by+bh>H-4)by=A.y-bh-6;bar.style.left=clamp(bx,4,Math.max(4,W-bw-4))+'px';bar.style.top=clamp(by,4,Math.max(4,H-bh-4))+'px';}
+      else bar.hidden=true;}
+    else bar.hidden=true;}
   if(dr&&dr.type==='marquee'){const A=w2s(dr.p0),B=w2s(dr.p1);
     s+=`<rect x="${f2(Math.min(A.x,B.x))}" y="${f2(Math.min(A.y,B.y))}" width="${f2(Math.abs(A.x-B.x))}" height="${f2(Math.abs(A.y-B.y))}" fill="${SELC}" fill-opacity=".08" stroke="${SELC}" stroke-dasharray="3 3"/>`;}
   if(dr&&dr.type==='stroke'&&dr.pts.length>1){s+=`<path d="${polyD(dr.pts.map(w2s),false)}" fill="none" stroke="${dr.color||INK}" stroke-width="1.5" stroke-opacity=".75"/>`;}
@@ -775,25 +793,26 @@ const ICON={
  sn:'<path d="M14 14h11M14 3v22" stroke="#111" stroke-width="1.5"/><circle cx="14" cy="14" r="5" fill="#fff" stroke="#111" stroke-width="1.4"/><path d="M14 9A5 5 0 0 0 14 19z" fill="#111"/><path d="M23 14l-3.5-2.4v4.8z" fill="#111"/>',
  cycle:'<ellipse cx="14" cy="14" rx="10" ry="7.5" fill="none" stroke="#111" stroke-width="2"/><path d="M14 6.5l-4 -2.3v4.6z" fill="#111"/>',
  boundary:'<path d="M4 20C9 10 18 22 24 9" fill="none" stroke="#1a7f5a" stroke-width="1.8"/><path d="M9 13l-2-5M17 17l1-5" stroke="#1a7f5a" stroke-width="1.2"/><path d="M7 6.5l-1.6 3 2.9-.6zM18.4 10.5l-2 2.5 3 .3z" fill="#1a7f5a"/>',
+ region:'<rect x="4" y="6" width="20" height="15" fill="none" stroke="#2f81f7" stroke-width="1.6" stroke-dasharray="3 2"/><path d="M9 17C12 10 16 15 20 9" fill="none" stroke="#111" stroke-width="1.4"/>',
  label:'<text x="14" y="20" text-anchor="middle" font-family="Times New Roman,serif" font-style="italic" font-size="17" fill="#111">x₁</text>'};
 const TOOLS=[
  ['select','Select / edit (V)','V'],['pan','Pan (H)','H'],null,
  ['traj','Trajectory, freehand (T)','T'],['pen','Trajectory, Bézier pen (P)','P'],null,
  ['sink','Sink (1)','1'],['source','Source (2)','2'],['saddle','Saddle (3)','3'],['sn','Saddle-node (4) – codim 1','4'],null,
- ['cycle','Periodic orbit (C) – click or draw a loop','C'],['boundary','Inflow/outflow boundary (B)','B'],null,['label','Text label (L)','L']];
+ ['cycle','Periodic orbit (C) – click or draw a loop','C'],['boundary','Inflow/outflow boundary (B)','B'],null,['label','Text label (L)','L'],['region','Region: copy a rectangle as image or sketch (G)','G']];
 function buildTools(){const box=$('tools');box.innerHTML='';
   for(const t of TOOLS){if(!t){const d=document.createElement('div');d.className='grp';box.appendChild(d);continue;}
     const b=document.createElement('button');b.title=t[1];b.dataset.tool=t[0];
     b.innerHTML=`<svg viewBox="0 0 28 28">${ICON[t[0]]}</svg><span class="k">${t[2]}</span>`;
     b.onclick=()=>setTool(t[0]);box.appendChild(b);}}
-function setTool(t){if(t==='sn'&&doc.structStable){setMsg('Saddle-nodes need “Structurally stable” switched off',true);return;}
+function setTool(t){if(t!=='region')st.region=null;if(t==='sn'&&doc.structStable){setMsg('Saddle-nodes need “Structurally stable” switched off',true);return;}
   if(st.pen)finishPen(false);st.tool=t;st.magnets=[];st.lastDown=null;
   svg.style.cursor=t==='pan'?'grab':t==='select'?'default':'crosshair';st.panelDirty=true;refresh();}
 function updateToolbar(){for(const b of document.querySelectorAll('#tools button')){b.classList.toggle('on',b.dataset.tool===st.tool);
     if(b.dataset.tool==='sn')b.disabled=doc.structStable;}
   $('bUndo').disabled=!st.undo.length;$('bRedo').disabled=!st.redo.length;
   $('zoomLbl').textContent=Math.round(st.view.k*100)+'%';$('cSS').checked=doc.structStable;}
-const TOOLHINT={select:'Click to select, drag to move; drag empty space for a selection box',pan:'Drag to pan',
+const TOOLHINT={region:'Drag a rectangle, then choose Copy image or Copy sketch',select:'Click to select, drag to move; drag empty space for a selection box',pan:'Drag to pan',
   traj:'Draw a trajectory in the direction of the flow; ends snap to targets',pen:'Click / click-drag to add nodes; Enter or double-click to finish',
   sink:'Click to place a sink',source:'Click to place a source',saddle:'Click to place a saddle',sn:'Click to place a saddle-node',
   cycle:'Click for an ellipse, or draw a closed loop',boundary:'Draw a boundary curve (close the loop for a trapping region)',label:'Click to place a label'};
@@ -818,6 +837,7 @@ svg.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
   const t=st.tool;
   if(t==='select')return downSelect(e,p);
+  if(t==='region'){st.region=null;st.drag={type:'region',p0:p,p1:p};renderOverlay();return;}
   if(t==='traj'||t==='boundary'||t==='cycle'){st.drag={type:'stroke',tool:t,pts:[p],color:t==='boundary'?BNDC:INK};
     if(t==='traj'){const m=findSnap(p,fakeTraj(p),'start');st.magnets=m?[m]:[];}return;}
   if(t==='pen')return downPen(e,p);
@@ -860,6 +880,7 @@ svg.addEventListener('pointermove',e=>{
     renderOverlay();return;}
   if(d.type==='penhandle'){const nd=st.pen.nodes[st.pen.nodes.length-1];const v=vsub(p,nd);
     if(vlen(v)*st.view.k>3){nd.ox=v.x;nd.oy=v.y;nd.ix=-v.x;nd.iy=-v.y;nd.smooth=true;}renderOverlay();return;}
+  if(d.type==='region'){d.p1=p;renderOverlay();return;}
   if(d.type==='marquee'){d.p1=p;const x0=Math.min(d.p0.x,p.x),x1=Math.max(d.p0.x,p.x),y0=Math.min(d.p0.y,p.y),y1=Math.max(d.p0.y,p.y);
     st.sel=new Set(d.prev);for(const el of doc.elements){const b=elBBox(el);if(b.x0>=x0&&b.x1<=x1&&b.y0>=y0&&b.y1<=y1)st.sel.add(el.id);}
     schedule();return;}
@@ -890,6 +911,8 @@ svg.addEventListener('pointerup',e=>{const d=st.drag;st.drag=null;
   if(d.type==='stroke'){st.magnets=[];finishStroke(d);return;}
   if(d.type==='penhandle'){renderOverlay();return;}
   if(d.type==='marquee'){st.panelDirty=true;refresh();return;}
+  if(d.type==='region'){const r={x:Math.min(d.p0.x,d.p1.x),y:Math.min(d.p0.y,d.p1.y),w:Math.abs(d.p1.x-d.p0.x),h:Math.abs(d.p1.y-d.p0.y)};
+    st.region=(r.w*st.view.k>6&&r.h*st.view.k>6)?r:null;renderOverlay();return;}
   if(d.type==='move'){if(d.moved)commit(d.before,'Moved');else refresh();return;}
   if(d.type==='scale'||d.type==='rotate'){commit(d.before,d.type==='scale'?'Scaled':'Rotated');return;}
   if(d.type==='eqrot'||d.type==='eqspread'){commit(d.before,'Saddle adjusted');return;}
@@ -1123,10 +1146,11 @@ document.addEventListener('keydown',e=>{
   if(k==='Delete'||k==='Backspace'){e.preventDefault();if(st.selNode)deleteNode();else deleteSelection();return;}
   if(k.startsWith('Arrow')&&st.sel.size){e.preventDefault();const s=(e.shiftKey?10:1)/st.view.k;const dx=k==='ArrowLeft'?-s:k==='ArrowRight'?s:0,dy=k==='ArrowUp'?-s:k==='ArrowDown'?s:0;
     const before=snapshot();for(const el of selEls())affine(el,{a:1,b:0,c:0,d:1,e:dx,f:dy});commit(before,'Nudged');return;}
-  const map={v:'select',h:'pan',t:'traj',p:'pen','1':'sink','2':'source','3':'saddle','4':'sn',c:'cycle',b:'boundary',l:'label'};
+  const map={g:'region',v:'select',h:'pan',t:'traj',p:'pen','1':'sink','2':'source','3':'saddle','4':'sn',c:'cycle',b:'boundary',l:'label'};
   if(map[k.toLowerCase()]){setTool(map[k.toLowerCase()]);return;}
   if(k==='r'||k==='R'){reverseSelected();return;}
   if(k==='s'||k==='S'){simplifySelected();return;}
+  if(k==='i'||k==='I'){copyImage();return;}
   if(k==='+'||k==='='){zoomCenter(1.25);return;}if(k==='-'||k==='_'){zoomCenter(0.8);return;}
   if(k==='0'){fit();return;}if(k==='?'){openModal('helpModal');return;}});
 document.addEventListener('keyup',e=>{if(e.key===' '){st.space=false;svg.style.cursor=st.tool==='pan'?'grab':st.tool==='select'?'default':'crosshair';}});
@@ -1202,11 +1226,61 @@ $('libInput').addEventListener('change',async e=>{const L=libGet();let added=0,s
   e.target.value='';
   try{localStorage.setItem(LIBKEY,JSON.stringify(L));}catch(err){setMsg('Browser storage is full or unavailable',true);return;}
   renderLib();setMsg(`Imported ${added} drawing${added===1?'':'s'}`+(same?`, ${same} already present`:'')+(bad?`, ${bad} unreadable`:''),!!bad&&!added);});
+/* ---------- clipboard: native sketch (text/plain JSON) and images (image/png) ---------- */
+const CLIPKEY='phaseplane-clipboard';
+const isTyping=t=>{const tag=(t&&t.tagName||'').toLowerCase();return (tag==='input'&&t.type!=='checkbox')||tag==='textarea'||tag==='select'||(t&&t.isContentEditable);};
+function clipText(els){resolveAll();const ids=new Set(els.map(e=>e.id));
+  const out=els.map(e=>{const c=structuredClone(e);if(c.type==='traj')for(const w of ['start','end'])if(c[w]&&!ids.has(c[w].el))c[w]=null;return c;});
+  const txt=JSON.stringify({format:'phaseplane-clip',version:1,arrowScale:AS(),elements:out});
+  try{localStorage.setItem(CLIPKEY,txt);}catch(e){}return txt;}
+function parseClip(txt){try{const o=JSON.parse(txt);if(o&&Array.isArray(o.elements)&&(o.format==='phaseplane-clip'||o.format==='phaseplane-sketch'))return o;}catch(e){}return null;}
+function internalClip(){try{return parseClip(localStorage.getItem(CLIPKEY)||'');}catch(e){return null;}}
+const nEl=n=>`${n} element${n===1?'':'s'}`;
+async function copySketch(els,cut){els=els||selEls();if(!els.length){setMsg('Select something to copy first',true);return;}
+  const txt=clipText(els);let sys=false;try{await navigator.clipboard.writeText(txt);sys=true;}catch(e){}
+  if(cut)deleteSelection();setMsg((cut?'Cut ':'Copied ')+nEl(els.length)+(sys?'':' (kept in this browser only)'));}
+function pasteClip(o){const before=snapshot();const map=new Map(),added=[];
+  for(const el of o.elements){if(!el||!el.type)continue;const c=structuredClone(el);map.set(el.id,doc.nextId);c.id=doc.nextId++;added.push(c);}
+  if(!added.length){setMsg('Nothing to paste',true);return;}
+  for(const c of added)if(c.type==='traj')for(const w of ['start','end'])if(c[w])c[w]=map.has(c[w].el)?{...c[w],el:map.get(c[w].el)}:null;
+  const b=unionBox(added),W=svg.clientWidth/st.view.k,H=svg.clientHeight/st.view.k,cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;
+  let dx=0,dy=0;
+  if(cx>st.view.x&&cx<st.view.x+W&&cy>st.view.y&&cy<st.view.y+H){/* visible: offset while it would sit exactly on existing elements */
+    const ex=doc.elements.map(e=>({t:e.type,q:elBBox(e)})),ad=added.map(c=>({t:c.type,q:elBBox(c)}));
+    const hit=(dx,dy)=>ad.some(a=>ex.some(e=>e.t===a.t&&Math.abs(e.q.x0-a.q.x0-dx)<1&&Math.abs(e.q.y0-a.q.y0-dy)<1&&Math.abs(e.q.x1-a.q.x1-dx)<1&&Math.abs(e.q.y1-a.q.y1-dy)<1));
+    for(let i=0;i<30&&hit(dx,dy);i++){dx+=20;dy+=20;}}
+  else{dx=st.view.x+W/2-cx;dy=st.view.y+H/2-cy;}
+  for(const c of added)affine(c,{a:1,b:0,c:0,d:1,e:dx,f:dy});
+  doc.elements.push(...added);st.sel=new Set(added.map(a=>a.id));if(st.tool!=='select')setTool('select');
+  commit(before,'Pasted '+nEl(added.length)+' – drag them into place',{force:true});}
+async function pasteFromButton(){let o=null;
+  try{if(navigator.clipboard&&navigator.clipboard.readText)o=parseClip(await navigator.clipboard.readText());}catch(e){}
+  if(!o)o=internalClip();if(!o){setMsg('Nothing to paste – copy a sketch first',true);return;}pasteClip(o);}
+document.addEventListener('copy',e=>{if(isTyping(e.target))return;const els=selEls();if(!els.length)return;
+  e.clipboardData.setData('text/plain',clipText(els));e.preventDefault();setMsg('Copied '+nEl(els.length));});
+document.addEventListener('cut',e=>{if(isTyping(e.target))return;const els=selEls();if(!els.length)return;
+  e.clipboardData.setData('text/plain',clipText(els));e.preventDefault();deleteSelection();setMsg('Cut '+nEl(els.length));});
+document.addEventListener('paste',e=>{if(isTyping(e.target))return;
+  let o=parseClip((e.clipboardData&&e.clipboardData.getData('text/plain'))||'');if(!o)o=internalClip();
+  if(!o){setMsg('The clipboard holds no sketch',true);return;}e.preventDefault();pasteClip(o);});
+function imageSource(rect){if(rect)return exportSVG({rect});const els=selEls();return exportSVG(els.length?{only:new Set(els.map(e=>e.id))}:{});}
+async function copyImage(rect){if(!doc.elements.length){setMsg('Nothing to copy yet',true);return;}
+  const what=rect?'Region':selEls().length?'Selection':'Drawing';const p=pngBlob(3,imageSource(rect));
+  try{if(!navigator.clipboard||!window.ClipboardItem)throw new Error('this browser cannot put images on the clipboard');
+    await navigator.clipboard.write([new ClipboardItem({'image/png':p})]);setMsg(what+' copied as image – paste it into another app');}
+  catch(err){const blob=await p;const name=baseName()+'.png';
+    if(MOBILE){offerShare(name,blob);}else{download(name,blob);setMsg('Could not copy the image ('+err.message+'); saved '+name+' instead',true);}}}
+$('bCopy').onclick=()=>copySketch();$('bPaste').onclick=pasteFromButton;$('bCopyImg').onclick=()=>copyImage();
+$('regionBar').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.rg;if(!a)return;const r=st.region;
+  if(a==='x'||!r){st.region=null;renderOverlay();return;}
+  if(a==='img')copyImage(r);
+  else{const els=doc.elements.filter(el=>{const b=elBBox(el);return b.x0>=r.x&&b.x1<=r.x+r.w&&b.y0>=r.y&&b.y1<=r.y+r.h;});
+    if(!els.length){setMsg('No element lies completely inside the rectangle',true);return;}copySketch(els);}});
 /* drag a .phase.json file onto the drawing to open it */
 $('stage').addEventListener('dragover',e=>{e.preventDefault();});
 $('stage').addEventListener('drop',async e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(!f)return;
   try{loadDoc(JSON.parse(await f.text()));fileHandle=null;fileName=f.name;updateTitle();setMsg('Opened '+f.name);}catch(err){setMsg('Could not open file: '+err.message,true);}});
-function pngBlob(scale){return new Promise(res=>{const {w,h,svg:sv}=exportSVG();const img=new Image();
+function pngBlob(scale,src){return new Promise(res=>{const {w,h,svg:sv}=src||exportSVG();const img=new Image();
   img.onload=()=>{const c=document.createElement('canvas');c.width=w*scale;c.height=h*scale;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);
     g.drawImage(img,0,0,c.width,c.height);c.toBlob(res,'image/png');};
   img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(sv);});}
@@ -1222,7 +1296,10 @@ function loadDoc(obj){if(!obj||!Array.isArray(obj.elements))throw new Error('not
   st.undo.push(before);st.redo=[];st.sel.clear();st.selNode=null;resetKeys();autosave();st.panelDirty=true;fit();refresh();}
 $('fileInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;
   try{loadDoc(JSON.parse(await f.text()));fileHandle=null;fileName=f.name;updateTitle();setMsg('Opened '+f.name);}catch(err){setMsg('Could not open file: '+err.message,true);}e.target.value='';});
-function exportSVG(){const inner=renderScene(true);const tmp=document.createElementNS('http://www.w3.org/2000/svg','svg');
+function exportSVG(opt={}){const inner=renderScene(true,opt.only);
+  if(opt.rect){const x=Math.floor(opt.rect.x),y=Math.floor(opt.rect.y),w=Math.ceil(opt.rect.w),h=Math.ceil(opt.rect.h);
+    return {x,y,w,h,svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w}" height="${h}">\n<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#fff"/>\n${inner}\n</svg>\n`};}
+  const tmp=document.createElementNS('http://www.w3.org/2000/svg','svg');
   tmp.style.cssText='position:absolute;left:-9999px;top:0;width:10px;height:10px';tmp.innerHTML=`<g>${inner}</g>`;document.body.appendChild(tmp);
   let b;try{b=tmp.firstChild.getBBox();}catch(e){b={x:0,y:0,width:100,height:100};}tmp.remove();
   const m=16,x=Math.floor(b.x-m),y=Math.floor(b.y-m),w=Math.ceil(b.width+2*m),h=Math.ceil(b.height+2*m);

@@ -20,6 +20,7 @@ A browser tool for sketching qualitative phase portraits of planar flows, the ki
 | Saddle-node | `4` | Codimension 1, only when *Structurally stable* is off. Transversally stable or unstable. Half-filled disc on the node side, with three separatrix terminals plus the node sector. |
 | Periodic orbit | `C` | Click for an ellipse, or draw a closed loop. Stable = solid, unstable = dashed. Semi-stable (codim 1) = solid with a dashed shadow on the repelling side. Arrows show the orientation. |
 | Boundary | `B` | A transversal the flow crosses in one direction only, shown by small crossing arrows. A closed loop is created as an *inflow* boundary (trapping region); flip it in the panel. |
+| Region | `G` | Drag a rectangle. A small bar offers **Copy image** (exactly that rectangle, as a PNG for other apps; curves are clipped at its edge) and **Copy sketch** (the elements lying completely inside, for pasting into this tool). `Esc` or ✕ cancels. |
 | Label | `L` | Click to place text. Inside `$…$`: `_` gives a subscript, `^` a superscript, and `\alpha`, `\Gamma`, … give Greek letters. TikZ receives the text verbatim. |
 
 ## Editing
@@ -38,6 +39,21 @@ A browser tool for sketching qualitative phase portraits of planar flows, the ki
   * `Esc` goes back to Select.
 * **View:** the mouse wheel zooms around the cursor; `+`/`−` zoom and `0` fits the drawing.
 * **Panels:** the right panel edits the selected element (type, rotation, stability, arrows, line weight, …). With nothing selected it shows drawing-wide settings: arrow size and freehand smoothing.
+
+## Copy and paste
+
+There are two kinds of copy: a native sketch (for pasting back into this tool) and an image (for other apps).
+
+* **Copy** (button or `Ctrl/⌘+C`) puts the selected elements on the clipboard as a sketch. `Ctrl/⌘+X` cuts.
+* **Paste** (button or `Ctrl/⌘+V`) inserts the sketch.
+  * The pasted elements are selected. They are offset by 20 px if they would sit exactly on the originals; if the copied area is off-screen, they go to the centre of the view.
+  * Attachments among copied elements are kept; attachments to elements that were not copied are dropped.
+  * This works between drawings and between tabs.
+  * A copy is also kept in the browser, so Paste still works where the browser refuses to read the clipboard (e.g. some Firefox versions). It also works when the clipboard meanwhile holds something else, such as an image.
+  * On iPad, the Paste button may show a small system "Paste" bubble that has to be tapped once.
+* **Copy image** (button or `I`) puts a PNG (3×, white background) on the clipboard, ready to paste into note-taking apps, documents or chats.
+  * It copies the selection, or the whole drawing if nothing is selected. Use the **Region** tool for an exact rectangle.
+  * If the browser refuses image clipboard access, iPad and Android offer the share sheet instead (which also has *Copy*), and desktops save a PNG file.
 
 ## Magnet (snapping)
 
