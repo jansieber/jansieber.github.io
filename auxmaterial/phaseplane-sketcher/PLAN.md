@@ -104,6 +104,11 @@ Recommendation **B + 1 + 2**, with PNG 3× on white.
 
 Implemented as B + 1 + 2 (§3.11).
 
+### Round 14
+> One further feature request: to demonstrate separatrix splitting, it is useful to also split trajectories at a node. After selecting a node, one should be able to split the trajectory there.
+
+Implemented as `splitAtNode()`: key `X`, plus a panel button shown when an inner node is selected (see §3.8).
+
 ---
 
 ## 2. Feasibility assessment (agreed scope)
@@ -298,6 +303,15 @@ Bindings (trajectory ends):
 * **Drag types:** `pan, move, scale, rotate, eqrot, eqspread, node, hin, hout, marquee, stroke, penhandle`.
   * Move, scale and rotate restore the document from a `structuredClone` of the base and apply an affine map each frame (`affine(el, M)`). This maps nodes and handles, transforms equilibrium angles and spread, flips boundary `dir` and spiral sense when `det < 0`, and leaves glyph sizes unchanged.
   * Scale handles: corners are uniform (`Shift` free, `Alt` about the centre); edges scale one axis; a rotate knob sits above the box.
+* **Splitting** (`splitAtNode`, key `X`):
+  * Applies to the selected inner node `i` (0 < i < n−1) of a trajectory or open boundary.
+  * Element A keeps `nodes[0..i]` and its start binding; a clone B gets a new id, `nodes[i..]` and the end binding.
+  * At the cut, A's out-handle and B's in-handle are zeroed and both cut nodes become corners. The trajectories' cut ends are free, and `arrowPos` is reset to 0.5.
+  * For a boundary, trajectory bindings with `t ≥ i` move to B with `t − i`.
+  * B is inserted after A and selected, with its node 0 selected. The edit is committed with `{force:true}`.
+  * Validation ignores intersections within 4 units of coinciding trajectory endpoints, so freshly split pieces do not flag each other.
+  * Clicking a node re-renders the panel so that the split button appears.
+  * The inverse is the existing join magnet.
 * **Undo/redo:** JSON snapshot stacks (up to 300 entries).
 * **Autosave, per tab:**
   * Each tab has an id `TAB` stored in `sessionStorage['phaseplane-tab']`, which survives reloads. The slot is `localStorage['phaseplane-autosave:'+TAB]` = `{date, doc}`.

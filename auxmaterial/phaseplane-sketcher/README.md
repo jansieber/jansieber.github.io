@@ -28,6 +28,12 @@ A browser tool for sketching qualitative phase portraits of planar flows, the ki
 * **Nodes:** a single selected curve shows its Bézier nodes (squares) and handles (dots). Drag them; `Alt`-drag a handle to break smoothness.
 * **Adding and removing nodes:** double-click a curve to insert a node, double-click a node to toggle smooth/corner, or select a node and press `Del` to remove it.
 * **Detaching ends:** dragging an attached end of a trajectory detaches it; drop it near a target to re-attach. An end attached to a sink, source or node sector has no handle; use *Detach end* in the panel.
+* **Splitting** (`X` or the panel button *Split at node*): click a trajectory, click one of its inner square nodes, and press `X`. The trajectory is cut into two at that node.
+  * The first part keeps the original start attachment and the second the end attachment; the new ends are free.
+  * Drag a new end to pull the pieces apart, e.g. to show the splitting of separatrices under perturbation.
+  * To split at a place without a node, double-click the curve there first to insert one.
+  * Dropping a free end back onto the other piece's free start joins them again.
+  * Open boundaries can be split the same way.
 * **Joining:** drop the free end of a trajectory on the free start of another (or draw a new one starting or ending there) to merge them into one trajectory.
 * **Simplify** (`S` or panel button): smooths the selected curve(s) and refits them with about 30% fewer nodes. Press repeatedly to straighten wobbly hand-drawn curves. The smoothing applied to freehand strokes (low/medium/high) is set in the right panel when nothing is selected.
 * **Other keys:**

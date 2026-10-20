@@ -195,7 +195,7 @@ label.chk{display:inline-flex;align-items:center;gap:4px;cursor:pointer;user-sel
   <h4>Editing</h4>
   <table>
   <tr><td><b>Select</b> <kbd>V</kbd></td><td>Click or drag a rectangle to select; <kbd>Shift</kbd> adds. Drag to move. Corner handles scale uniformly (<kbd>Shift</kbd>: free, <kbd>Alt</kbd>: about the centre), edge handles stretch one direction, the round handle on top rotates (<kbd>Shift</kbd>: 15° steps).</td></tr>
-  <tr><td>Nodes</td><td>A single selected curve shows its Bézier nodes (squares) and handles (dots). Drag them; <kbd>Alt</kbd>-drag a handle to break smoothness. Double-click a curve to insert a node, double-click a node to toggle smooth/corner, select a node and press <kbd>Del</kbd> to remove it. Dragging a bound end of a trajectory detaches it; drop it near a target to re-attach.</td></tr>
+  <tr><td>Nodes</td><td>A single selected curve shows its Bézier nodes (squares) and handles (dots). Drag them; <kbd>Alt</kbd>-drag a handle to break smoothness. Double-click a curve to insert a node, double-click a node to toggle smooth/corner, select a node and press <kbd>Del</kbd> to remove it, or <kbd>X</kbd> to <b>split</b> the trajectory there into two (e.g. to show separatrix splitting; drag the new ends apart – dropping a free end back on the other's free start joins them again). Dragging a bound end of a trajectory detaches it; drop it near a target to re-attach.</td></tr>
   <tr><td>Saddles</td><td>Select a saddle and drag the diamond handles to rotate it or change the angle between its eigendirections.</td></tr>
   <tr><td>Keys</td><td><kbd>Del</kbd> delete, <kbd>Ctrl+D</kbd> duplicate (never refused, so you can drag the copy into place), <kbd>S</kbd> simplify, <kbd>R</kbd> reverse trajectory/orbit, <kbd>Ctrl+A</kbd> select all, arrow keys nudge, <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Shift+Z</kbd> undo/redo, <kbd>Esc</kbd> back to Select.</td></tr>
   <tr><td>View</td><td>Mouse wheel zooms around the cursor; pan with <kbd>Space</kbd>+drag, the middle mouse button or the hand tool <kbd>H</kbd>; <kbd>0</kbd> fits the drawing.</td></tr>
@@ -487,6 +487,8 @@ function validate(){
   for(const cv of curves)cv.att=attach(cv);
   const ignore=(x,A,B)=>{
     for(const a of A.att)for(const b of B.att)if(a.eq===b.eq&&vdist(a.pos,b.pos)<1&&vdist(x,a.pos)<7)return true;
+    if(A.kind==='traj'&&B.kind==='traj'){/* touching ends, e.g. right after a split */
+      for(const p of [A.pts[0],A.pts[A.pts.length-1]])for(const q of [B.pts[0],B.pts[B.pts.length-1]])if(vdist(p,q)<1&&vdist(x,p)<4)return true;}
     for(const [T,C] of [[A,B],[B,A]])if(T.kind==='traj'&&(C.kind==='cycle'||C.kind==='boundary'))
       for(const w of ['start','end']){const b=T.el[w];if(b&&b.el===C.el.id&&vdist(x,endNode(T.el,w))<(C.kind==='cycle'?9:4))return true;}
     return false;};
@@ -854,7 +856,7 @@ function downSelect(e,p){
     if(kind==='node'||kind==='hin'||kind==='hout'){const i=+arg;st.selNode={id:el.id,i};
       const d={type:kind,id:el.id,i,before,p0:p,moved:false};
       if(kind==='node'&&el.type==='traj'&&(i===0||i===el.nodes.length-1)){d.which=i===0?'start':'end';}
-      st.drag=d;renderOverlay();return;}
+      st.drag=d;renderOverlay();if(kind==='node')renderPanel();return;}
     if(kind==='sc'||kind==='rot'){const els=selEls(),b=unionBox(els);
       st.drag={type:kind==='sc'?'scale':'rotate',handle:arg,box:b,before,base:JSON.parse(before),p0:p,ids:[...st.sel]};return;}
     if(kind==='eqrot'||kind==='eqspread'){st.drag={type:kind,id:el.id,before};return;}}
@@ -1023,6 +1025,19 @@ function insertNode(el,p){const before=snapshot();const nr=nearestOnPath(el,p);c
   A.ox=L[1].x-A.x;A.oy=L[1].y-A.y;B.ix=R[2].x-B.x;B.iy=R[2].y-B.y;
   const m=L[3];const nd={x:m.x,y:m.y,ix:L[2].x-m.x,iy:L[2].y-m.y,ox:R[1].x-m.x,oy:R[1].y-m.y,smooth:true};
   el.nodes.splice(i+1,0,nd);rebindTo(el);st.sel=new Set([el.id]);st.selNode={id:el.id,i:i+1};commit(before,'Node inserted');}
+function canSplit(el){const sn=st.selNode;if(!sn||!el||sn.id!==el.id)return false;
+  return (el.type==='traj'||(el.type==='boundary'&&!el.closed))&&sn.i>0&&sn.i<el.nodes.length-1;}
+function splitAtNode(){const sn=st.selNode,el=sn&&byId(sn.id);
+  if(!canSplit(el)){setMsg('Select an inner node first: click the trajectory, then one of its square nodes',true);return;}
+  const before=snapshot(),i=sn.i,B=structuredClone(el);B.id=doc.nextId++;
+  el.nodes=el.nodes.slice(0,i+1).map(n=>({...n}));B.nodes=B.nodes.slice(i);
+  const a=el.nodes[i],b=B.nodes[0];a.ox=0;a.oy=0;a.smooth=false;b.ix=0;b.iy=0;b.smooth=false;
+  if(el.type==='traj'){el.end=null;B.start=null;el.arrowPos=B.arrowPos=0.5;}
+  else for(const tr of doc.elements)if(tr.type==='traj')for(const w of ['start','end']){const bd=tr[w];
+    if(bd&&bd.el===el.id&&bd.t!==undefined&&bd.t>=i){bd.el=B.id;bd.t-=i;}}
+  doc.elements.splice(doc.elements.indexOf(el)+1,0,B);
+  st.sel=new Set([B.id]);st.selNode={id:B.id,i:0};
+  commit(before,el.type==='traj'?'Split into two trajectories – drag an end to pull them apart':'Boundary split in two',{force:true});}
 function deleteNode(){const sn=st.selNode;const el=byId(sn.id);if(!el)return;const min=el.closed?3:2;
   if(el.nodes.length<=min){setMsg('A curve needs at least '+min+' nodes',true);return;}
   const before=snapshot();
@@ -1086,7 +1101,8 @@ function renderPanel(){const box=$('props');const els=selEls();let h='';
     else if(el.type==='traj'){h+=row('Start',`<span>${esc(bindingText(el,'start'))}</span>`)+row('End',`<span>${esc(bindingText(el,'end'))}</span>`);
       h+=row('Line',sel_('weight',el.weight||'auto',[['auto','auto (thick for separatrices)'],['normal','normal'],['thick','thick']]));
       h+=row('Arrows',num('arrows',el.arrows,1,0,6));if(el.arrows===1)h+=row('Arrow position',`<input type="range" data-prop="arrowPos" min="0.05" max="0.95" step="0.01" value="${el.arrowPos}">`);
-      h+=`<div class="btns"><button data-act="rev">Reverse (R)</button>${el.start?'<button data-act="detS">Detach start</button>':''}${el.end?'<button data-act="detE">Detach end</button>':''}</div>`;}
+      h+=`<div class="btns"><button data-act="rev">Reverse (R)</button>${el.start?'<button data-act="detS">Detach start</button>':''}${el.end?'<button data-act="detE">Detach end</button>':''}${canSplit(el)?'<button data-act="split">Split at node (X)</button>':''}</div>`;
+      if(!canSplit(el))h+=`<p class="hint">To split the trajectory, click one of its inner square nodes (double-click the curve to add one), then press X.</p>`;}
     else if(el.type==='cycle'){const opts=[['stable','Stable'],['unstable','Unstable']];
       if(!doc.structStable||el.stability.startsWith('semi'))opts.push(['semi-inner','Semi-stable: attracts inside'],['semi-outer','Semi-stable: attracts outside']);
       h+=row('Stability',sel_('stability',el.stability,opts))+row('Arrows',num('arrows',el.arrows,1,0,8));
@@ -1117,7 +1133,7 @@ $('props').addEventListener('input',e=>{const t=e.target,prop=t.dataset.prop;
   if(prop==='text'){if(!st.textBefore)st.textBefore=snapshot();el.text=t.value;st.valid=validate();sceneG.innerHTML=renderScene(false);renderOverlay();}
   if(prop==='arrowPos'){if(!st.textBefore)st.textBefore=snapshot();el.arrowPos=parseFloat(t.value);sceneG.innerHTML=renderScene(false);}});
 $('props').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.act;if(!a)return;
-  if(a==='simp')simplifySelected();else if(a==='del')deleteSelection();else if(a==='dup')duplicateSelection();else if(a==='rev')reverseSelected();
+  if(a==='split')splitAtNode();else if(a==='simp')simplifySelected();else if(a==='del')deleteSelection();else if(a==='dup')duplicateSelection();else if(a==='rev')reverseSelected();
   else if(a==='detS'||a==='detE'){const el=selEls()[0];const before=snapshot();el[a==='detS'?'start':'end']=null;commit(before,'Detached');}});
 function renderProblems(){const v=st.valid;let h='<h3>Consistency</h3>';
   if(!v.hard.length&&!v.warn.length)h+='<div class="none">✓ No problems found</div>';
@@ -1151,6 +1167,7 @@ document.addEventListener('keydown',e=>{
   if(k==='r'||k==='R'){reverseSelected();return;}
   if(k==='s'||k==='S'){simplifySelected();return;}
   if(k==='i'||k==='I'){copyImage();return;}
+  if(k==='x'||k==='X'){splitAtNode();return;}
   if(k==='+'||k==='='){zoomCenter(1.25);return;}if(k==='-'||k==='_'){zoomCenter(0.8);return;}
   if(k==='0'){fit();return;}if(k==='?'){openModal('helpModal');return;}});
 document.addEventListener('keyup',e=>{if(e.key===' '){st.space=false;svg.style.cursor=st.tool==='pan'?'grab':st.tool==='select'?'default':'crosshair';}});
